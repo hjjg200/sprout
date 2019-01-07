@@ -23,7 +23,7 @@ type Sprout struct {
 
 func New() *Sprout {
 
-    s := &sprout{}
+    s := &Sprout{}
 
     s.assets = make( map[string] *bytes.Buffer )
     s.routes = make( []route, 0 )
@@ -107,8 +107,9 @@ func ( s *Sprout ) ProcessAsset( p string ) error {
         ErrInvalidAsset = errors.New( "sprout: the asset is invalid" )
     )
 
-    if !strings.HasPrefix( p, "asset/" ) &&
-       !strings.HasPrefix( p, "./asset/" ) {
+    p = filepath.Clean( p )
+
+    if !strings.HasPrefix( p, "asset/" ) {
         return ErrInvalidAsset
     }
 
@@ -220,7 +221,7 @@ func ( s *Sprout ) BuildCache() error {
     if err != nil {
         return err
     }
-    err = foreach( "asset/" archive )
+    err = foreach( "asset/", archive )
     if err != nil {
         return err
     }
@@ -266,10 +267,22 @@ func ( s *Sprout ) AddRoute( rgxStr string, hh http.HandlerFunc ) error {
 
 }
 
+func ( s *Sprout ) wrapProductionHandler( hh http.HandlerFunc ) http.HandlerFunc {
+    return func ( w http.ResponseWriter, r *http.Request ) {
+        hh( w, r )
+    }
+}
+
+func ( s *Sprout ) wrapDevHandler( hh http.HandlerFunc ) http.HandlerFunc {
+    return func ( w http.ResponseWriter, r *http.Request ) {
+        hh( w, r )
+    }
+}
+
 func ( s *Sprout ) StartServer( addr string ) error {
     s.srvProduction = &http.Server{
         Addr: addr,
-        Handler: s.mux,
+        Handler: wrapProductionHandler( s.mux ),
     }
     return s.srvProduction.ListenAndServe()
 }
@@ -277,7 +290,7 @@ func ( s *Sprout ) StartServer( addr string ) error {
 func ( s *Sprout ) StartDevServer( addr string ) error {
     s.srvDev = &http.Server{
         Addr: addr,
-        Handler: s.mux,
+        Handler: wrapDevHandler( s.mux ),
     }
     return s.srvDev.ListenAndServe()
 }
