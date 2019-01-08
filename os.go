@@ -2,9 +2,8 @@ package sprout
 
 import (
     "bytes"
-    "errors"
-    "runtime"
     "os/exec"
+    "runtime"
 )
 
 /*
@@ -15,9 +14,6 @@ import (
 
 
 func checkOS() error {
-    var (
-        ErrNotSupportedOS = errors.New( "sprout: the OS is not supported" )
-    )
     switch runtime.GOOS {
     case "windows", "linux", "darwin", "freebsd", "openbsd":
         envOS = runtime.GOOS
@@ -35,7 +31,7 @@ func ( s *Sprout ) doesCommandExist( cmd string ) bool {
     )
 
     switch envOS {
-    case "linux", "darwin", "freebsd", "openbsd":
+    case "linux", "darwin": //, "freebsd", "openbsd":
         s := "if command -v " + cmd + " > /dev/null 2>&1; then echo 'true'; fi"
         e  = exec.Command( "bash", "-c", s )
     case "windows":
@@ -62,7 +58,7 @@ func ( s *Sprout ) doesCommandExist( cmd string ) bool {
 func ( s *Sprout ) runCommand( cmd string ) error {
     var e *exec.Cmd
     switch envOS {
-    case "linux", "darwin", "freebsd", "openbsd":
+    case "linux", "darwin": //, "freebsd", "openbsd":
         e = exec.Command( "bash", "-c", cmd )
     case "windows":
         e = exec.Command( "cmd", "/C", cmd )

@@ -22,12 +22,9 @@ func TestSprout( t *testing.T ) {
     closer = make( chan struct{}, 1 )
 
     s := New()
-    err := s.AddRoute( "^/close$", testHandleHTTP3 )
-    testCheckError( t, err )
-    err = s.AddRoute( "^/hello_world$", testHandleHTTP2 )
-    testCheckError( t, err )
-    err = s.AddRoute( "^/", testHandleHTTP )
-    testCheckError( t, err )
+    s.AddRoute( "^/close$", testHandleHTTP3 )
+    s.AddRoute( "^/hello_world$", testHandleHTTP2 )
+    s.AddRoute( "^/", testHandleHTTP )
 
     testCheckError( t, s.BuildCache() )
 

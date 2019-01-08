@@ -3,15 +3,15 @@ package sprout
 import (
     "archive/zip"
     "bytes"
-    "errors"
-    "path/filepath"
     "crypto/sha256"
+    "errors"
     "fmt"
-    "time"
-    "os"
-    "strings"
     "io"
     "io/ioutil"
+    "os"
+    "path/filepath"
+    "strings"
+    "time"
 )
 
 /*
@@ -20,14 +20,19 @@ import (
  + Note that this file uses filepath for path operations while the others use path, as this file deals with the underlying filesystem.
  */
 
- func ( s *Sprout ) BuildCache() error {
+func ( s *Sprout ) LoadCache( fn string ) error {
+
+    return nil
+}
+
+func ( s *Sprout ) BuildCache() error {
 
     /*
      | Prepare the Zip File
      */
 
-    t       := time.Now().Format( "20060102-150405" )
-    fn      := "./cache/" + t + ".tmp"
+    t       := time.Now().Format( EnvFilenameTimeFormat )
+    fn      := envDirCache + "/" + t + ".tmp"
     f, err  := os.OpenFile( fn, os.O_WRONLY | os.O_CREATE, 0600 )
     if err != nil {
         return err
@@ -64,17 +69,28 @@ import (
     }
 
     archive := func ( path string ) error {
-        w, err3 := zw.Create( path )
-        if err3 != nil {
-            return err3
-        }
+
         st, err3 := os.Stat( path )
         if err3 != nil {
             return err3
         }
+
+        // Add Slash at the End If path Resolves to a Folder
         if st.IsDir() {
+            path    = path + "/"
+            _, err3 = zw.Create( path )
+            if err3 != nil {
+                return err3
+            }
             return nil
         }
+
+        // Create Node in the Zip
+        w, err3 := zw.Create( path )
+        if err3 != nil {
+            return err3
+        }
+
         pw, err3 := os.Open( path )
         if err3 != nil {
             return err3
@@ -116,11 +132,11 @@ import (
      | Archive Files
      */
 
-    err = foreach( "asset/", s.ProcessAsset )
+    err = foreach( envDirAsset, s.ProcessAsset )
     if err != nil {
         return err
     }
-    err = foreach( "asset/", archive )
+    err = foreach( envDirAsset, archive )
     if err != nil {
         return err
     }
@@ -140,7 +156,7 @@ import (
     zw.Close()
     f.Close()
 
-    err = os.Rename( fn, "./cache/" + t + "-" + hs[:6] + ".zip" )
+    err = os.Rename( fn, envDirCache + "/" + t + "-" + hs[:6] + ".zip" )
     if err != nil {
         return err
     }
@@ -157,7 +173,7 @@ func ( s *Sprout ) ProcessAsset( p string ) error {
 
     p = filepath.ToSlash( filepath.Clean( p ) )
 
-    if !strings.HasPrefix( p, "asset/" ) {
+    if !strings.HasPrefix( p, envDirAsset + "/" ) {
         return ErrInvalidAsset
     }
 

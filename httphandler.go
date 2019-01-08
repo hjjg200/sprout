@@ -15,7 +15,11 @@ type HTTPHandler struct {
 func newHTTPHandler( s *Sprout ) *HTTPHandler {
     return &HTTPHandler{
         parent: s,
-        serveHTTP: func ( w http.ResponseWriter, r *http.Request ) {},
+        serveHTTP: func ( w http.ResponseWriter, r *http.Request ) {
+            // If none of the handlers handled the request
+            // This is the fallback
+            WriteStatus( w, 404, "Not Found" )
+        },
     }
 }
 
@@ -25,7 +29,7 @@ func ( hh *HTTPHandler ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
 
 func ( hh *HTTPHandler ) WithRealtimeAssetServer() *HTTPHandler {
 
-    return hh.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) {
+    return hh.withNewHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) {
 
         url := r.URL.Path
         if isSafeAssetURL( url ) {
@@ -41,17 +45,20 @@ func ( hh *HTTPHandler ) WithRealtimeAssetServer() *HTTPHandler {
             case ".css", ".js":
             default:
                 // Status Not Found
+                WriteStatus( w, 404, "Not Found" )
                 return
             }
 
             f, err := os.Open( p )
             if err != nil {
                 // Status Internal Server Error
+                WriteStatus( w, 500, "Internal Server Error" )
                 return
             }
             st, err := f.Stat()
             if err != nil {
                 // Status Internal Server Error
+                WriteStatus( w, 500, "Internal Server Error" )
                 return
             }
 
@@ -68,7 +75,7 @@ func ( hh *HTTPHandler ) WithRealtimeAssetServer() *HTTPHandler {
 
 func ( hh *HTTPHandler ) WithCachedAssetServer() *HTTPHandler {
 
-    return hh.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) {
+    return hh.withNewHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) {
 
         url := r.URL.Path
         if isSafeAssetURL( url ) {
@@ -84,6 +91,7 @@ func ( hh *HTTPHandler ) WithCachedAssetServer() *HTTPHandler {
             case ".css", ".js":
             default:
                 // Status Not Found
+                WriteStatus( w, 404, "Not Found" )
                 return
             }
 
@@ -100,7 +108,7 @@ func ( hh *HTTPHandler ) WithCachedAssetServer() *HTTPHandler {
                 http.ServeContent( w, r, b, a.modTime, a.reader )
             } else {
                 // Status Not Found
-
+                WriteStatus( w, 404, "Not Found" )
             }
 
             return
@@ -137,10 +145,10 @@ func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
 func ( hh *HTTPHandler ) WithRoutes() *HTTPHandler {
 
-    return hh.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) {
+    return hh.withNewHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) {
         for _, route := range hh.parent.routes {
             rgx := route.rgx
-            rhh  := route.hh
+            rhh := route.hh
 
             if rgx.MatchString( r.URL.Path ) {
                 rhh( w, r )
@@ -152,7 +160,7 @@ func ( hh *HTTPHandler ) WithRoutes() *HTTPHandler {
 
 }
 
-func ( hh *HTTPHandler ) WithHandlerFunc( hf http.HandlerFunc ) *HTTPHandler {
+func ( hh *HTTPHandler ) withNewHandlerFunc( hf http.HandlerFunc ) *HTTPHandler {
     return &HTTPHandler{
         parent: hh.parent,
         serveHTTP: hf,
