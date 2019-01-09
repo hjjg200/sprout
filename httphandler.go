@@ -99,7 +99,7 @@ func ( hh *HTTPHandler ) WithCachedAssetServer() *HTTPHandler {
             if ok {
                 // Check if Version Is Set
                 v := r.FormValue( "v" )
-                if v == "" {
+                if v == "" || v != a.hash[:6] {
                     http.Redirect( w, r, url + "?v=" + a.hash[:6], http.StatusFound )
                     return
                 }

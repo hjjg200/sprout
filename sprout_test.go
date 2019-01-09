@@ -30,9 +30,10 @@ func TestSprout( t *testing.T ) {
     s.AddRoute( "^/", testHandleHTTP )
 
     testCheckError( t, s.BuildCache() )
+    fmt.Println( s.LoadCache( "asset.zip" ) )
 
     go func() {
-        testCheckError( t, s.StartDevServer( ":8080" ) )
+        testCheckError( t, s.StartServer( ":8080" ) )
     }()
 
     <- closer

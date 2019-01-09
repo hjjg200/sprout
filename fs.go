@@ -11,6 +11,7 @@ import (
     "os"
     "path/filepath"
     "sort"
+    "strconv"
     "strings"
     "time"
 )
@@ -76,7 +77,46 @@ func ( s *Sprout ) LatestCacheName() ( string, error ) {
 
 func ( s *Sprout ) LoadCache( fn string ) error {
 
+    zr, err := zip.OpenReader( envDirCache + "/" + fn )
+    if err != nil {
+        return err
+    }
+    defer zr.Close()
+
+    // Empty s.assets
+    s.assets = make( map[string] asset )
+
+    // Assign files
+    for _, f := range zr.File {
+        fn := f.Name
+        // Continue if it is a directory
+        if strings.HasSuffix( f.Name, "/" ) {
+            continue
+        }
+
+        frc, err := f.Open()
+        if err != nil {
+            panic( err )
+            continue
+        }
+
+        b   := bytes.NewBuffer( nil )
+        h   := sha256.New()
+        mt  := f.Modified
+        mtb := []byte( strconv.FormatInt( mt.Unix(), 10 ) )
+        h.Write( mtb )
+        io.Copy( b, frc )
+
+        s.assets[fn] = asset{
+            modTime: mt,
+            reader: bytes.NewReader( b.Bytes() ),
+            hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
+        }
+        frc.Close()
+    }
+
     return nil
+
 }
 
 func ( s *Sprout ) BuildCache() error {
@@ -87,7 +127,7 @@ func ( s *Sprout ) BuildCache() error {
 
     t       := time.Now().Format( EnvFilenameTimeFormat )
     fn      := envDirCache + "/" + t + ".tmp"
-    f, err  := os.OpenFile( fn, os.O_WRONLY | os.O_CREATE, 0600 )
+    f, err  := os.OpenFile( fn, os.O_RDWR | os.O_CREATE, 0600 )
     if err != nil {
         return err
     }
@@ -166,8 +206,8 @@ func ( s *Sprout ) BuildCache() error {
 
         h   := sha256.New()
         mt  := st.ModTime()
-        mts := mt.Format( "20060102150405" )
-        h.Write( []byte( mts ) )
+        mtb := []byte( strconv.FormatInt( mt.Unix(), 10 ) )
+        h.Write( mtb )
 
         s.assets[path] = asset{
             modTime: mt,
@@ -202,6 +242,10 @@ func ( s *Sprout ) BuildCache() error {
      */
 
     zw.Close()
+    _, err = f.Seek( 0, os.SEEK_SET )
+    if err != nil {
+        return err
+    }
 
     /*
      | Change Filename
