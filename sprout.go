@@ -2,6 +2,7 @@ package sprout
 
 import (
     "bytes"
+    "crypto/sha256"
     "encoding/json"
     "errors"
     "fmt"
@@ -9,6 +10,7 @@ import (
     "log"
     "net/http"
     "regexp"
+    "strconv"
     "time"
 )
 
@@ -26,8 +28,8 @@ const (
 )
 
 var (
-	envOS     string
-	envLogger *log.Logger
+    envOS     string
+    envLogger *log.Logger
 )
 
 /*
@@ -53,6 +55,19 @@ type asset struct {
 
     // sha256 hash of the file
     hash    string
+}
+
+func makeAsset( mt time.Time, r io.Reader ) asset {
+    h   := sha256.New()
+    mts := strconv.FormatInt( mt.Unix(), 10 )
+    h.Write( []byte( mts ) )
+    buf := bytes.NewBuffer( nil )
+    io.Copy( buf, r )
+    return asset{
+        modTime: mt,
+        reader: bytes.NewReader( buf.Bytes() ),
+        hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
+    }
 }
 
 type Sprout struct {

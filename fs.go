@@ -2,7 +2,6 @@ package sprout
 
 import (
     "archive/zip"
-    "bytes"
     "crypto/sha256"
     "errors"
     "fmt"
@@ -11,7 +10,6 @@ import (
     "os"
     "path/filepath"
     "sort"
-    "strconv"
     "strings"
     "time"
 )
@@ -88,6 +86,7 @@ func ( s *Sprout ) LoadCache( fn string ) error {
 
     // Assign files
     for _, f := range zr.File {
+
         fn := f.Name
         // Continue if it is a directory
         if strings.HasSuffix( f.Name, "/" ) {
@@ -100,19 +99,12 @@ func ( s *Sprout ) LoadCache( fn string ) error {
             continue
         }
 
-        b   := bytes.NewBuffer( nil )
-        h   := sha256.New()
-        mt  := f.Modified
-        mtb := []byte( strconv.FormatInt( mt.Unix(), 10 ) )
-        h.Write( mtb )
-        io.Copy( b, frc )
+        s.assets[fn] = makeAsset(
+            f.Modified, frc,
+        )
 
-        s.assets[fn] = asset{
-            modTime: mt,
-            reader: bytes.NewReader( b.Bytes() ),
-            hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
-        }
         frc.Close()
+
     }
 
     return nil
@@ -197,23 +189,16 @@ func ( s *Sprout ) BuildCache() error {
         | Assign Asset to s.assets
         */
 
-        dat, err := ioutil.ReadFile( path )
+        f, err := os.Open( path )
         if err != nil {
             return err
         }
 
-        r := bytes.NewReader( dat )
+        s.assets[path] = makeAsset(
+            st.ModTime(), f,
+        )
 
-        h   := sha256.New()
-        mt  := st.ModTime()
-        mtb := []byte( strconv.FormatInt( mt.Unix(), 10 ) )
-        h.Write( mtb )
-
-        s.assets[path] = asset{
-            modTime: mt,
-            reader: r,
-            hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
-        }
+        f.Close()
 
         // Write to zip
         _, err3 = io.Copy( w, pw )
