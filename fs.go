@@ -22,6 +22,8 @@ import (
 
 func ( s *Sprout ) LoadCache( fn string ) error {
 
+
+
     return nil
 }
 
@@ -141,19 +143,21 @@ func ( s *Sprout ) BuildCache() error {
         return err
     }
 
-    /*
-     | Change the Filename
-     */
 
-    h  := sha256.New()
-    io.Copy( h, f )
-    hs := fmt.Sprintf( "%x", h.Sum( nil ) )
 
     /*
      | End Archiving
      */
 
     zw.Close()
+
+    /*
+     | Change Filename
+     */
+
+    h  := sha256.New()
+    io.Copy( h, f )
+    hs := fmt.Sprintf( "%x", h.Sum( nil ) )
     f.Close()
 
     err = os.Rename( fn, envDirCache + "/" + t + "-" + hs[:6] + ".zip" )

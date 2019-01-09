@@ -26,7 +26,8 @@ const (
 )
 
 var (
-    envOS string
+	envOS     string
+	envLogger *log.Logger
 )
 
 /*
