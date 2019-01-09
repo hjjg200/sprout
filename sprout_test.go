@@ -4,9 +4,9 @@ import (
     "path/filepath"
     "fmt"
     "context"
-	"time"
-	"os"
-	"testing"
+    "time"
+    "os"
+    "testing"
     "net/http"
 )
 
@@ -20,7 +20,7 @@ func testCheckError( t *testing.T, err error ) {
 
 func TestSprout( t *testing.T ) {
 
-	os.Chdir( "D:\\sprout" )
+    os.Chdir( "D:\\sprout" )
 
     closer = make( chan struct{}, 1 )
 

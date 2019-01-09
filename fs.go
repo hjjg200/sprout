@@ -10,6 +10,7 @@ import (
     "io/ioutil"
     "os"
     "path/filepath"
+    "sort"
     "strings"
     "time"
 )
@@ -20,9 +21,60 @@ import (
  + Note that this file uses filepath for path operations while the others use path, as this file deals with the underlying filesystem.
  */
 
+// For sorting cache names
+type cacheNames []string
+
+func ( cn cacheNames ) Len() int { return len( cn ) }
+func ( cn cacheNames ) Swap( i, j int ) { cn[i], cn[j] = cn[j], cn[i] }
+func ( cn cacheNames ) Less( i, j int ) bool {
+    ti := parseTimeFromCacheName( cn[i] )
+    tj := parseTimeFromCacheName( cn[j] )
+    return ti.Sub( tj ) < 0
+}
+
+func formatCacheName( timeStr, hash string ) string {
+    return timeStr + "-" + hash[:6] + ".zip"
+}
+
+func parseTimeFromCacheName( fn string ) time.Time {
+    var (
+        ErrInvalidCacheName = errors.New( "sprout: the given cache name is invalid" )
+    )
+    if len( fn ) < len( EnvFilenameTimeFormat ) {
+        panic( ErrInvalidCacheName )
+        return time.Now()
+    }
+    timeStr := fn[:len( EnvFilenameTimeFormat )]
+    t, err  := time.ParseInLocation(
+        EnvFilenameTimeFormat,
+        timeStr,
+        time.Now().Location(),
+    )
+    if err != nil {
+        panic( err )
+        return time.Now()
+    }
+    return t
+}
+
+func ( s *Sprout ) LatestCacheName() ( string, error ) {
+
+    fis, err := ioutil.ReadDir( envDirCache )
+    if err != nil {
+        return "", err
+    }
+
+    cn := make( cacheNames, len( fis ) )
+    for i := range fis {
+        cn[i] = fis[i].Name()
+    }
+
+    sort.Sort( sort.Reverse( cn ) )
+    return cn[0], nil
+
+}
+
 func ( s *Sprout ) LoadCache( fn string ) error {
-
-
 
     return nil
 }
@@ -112,11 +164,13 @@ func ( s *Sprout ) BuildCache() error {
 
         r := bytes.NewReader( dat )
 
-        h := sha256.New()
-        io.Copy( h, r )
+        h   := sha256.New()
+        mt  := st.ModTime()
+        mts := mt.Format( "20060102150405" )
+        h.Write( []byte( mts ) )
 
         s.assets[path] = asset{
-            modTime: st.ModTime(),
+            modTime: mt,
             reader: r,
             hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
         }
@@ -143,8 +197,6 @@ func ( s *Sprout ) BuildCache() error {
         return err
     }
 
-
-
     /*
      | End Archiving
      */
@@ -160,7 +212,7 @@ func ( s *Sprout ) BuildCache() error {
     hs := fmt.Sprintf( "%x", h.Sum( nil ) )
     f.Close()
 
-    err = os.Rename( fn, envDirCache + "/" + t + "-" + hs[:6] + ".zip" )
+    err = os.Rename( fn, envDirCache + "/" + formatCacheName( t, hs ) )
     if err != nil {
         return err
     }
