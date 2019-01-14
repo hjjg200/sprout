@@ -1,8 +1,7 @@
 package sprout
 
 import (
-    "context"
-    "time"
+    "regexp"
     "os"
     "testing"
     "net/http"
@@ -23,21 +22,17 @@ func TestSprout( t *testing.T ) {
     closer = make( chan struct{}, 1 )
 
     s := New()
-    s.AddRoute( "^/close$", testHandleHTTP3 )
-    s.AddRoute( "^/session$", testHandleHTTP2 )
-    s.AddRoute( "^/(index.html?)?$", testHandleHTTP )
+
+    prod, _ := s.Server( "production" )
+    prod.Mux().WithRoute( regexp.MustCompile( "^/close$" ), testHandleHTTP3 )
+    prod.Mux().WithRoute( regexp.MustCompile( "^/(index.html?)?$" ), testHandleHTTP )
 
     go func() {
-        testCheckError( t, s.StartServer( ":8080" ) )
-    }()
-    go func() {
-        testCheckError( t, s.StartDevServer( ":8081" ) )
+        testCheckError( t, prod.Start( ":8080" ) )
     }()
 
     <- closer
-    ctx, _ := context.WithTimeout( context.Background(), 5 * time.Second )
-    s.srvProduction.Shutdown( ctx )
-    s.srvDev.Shutdown( ctx )
+    prod.Stop()
     t.Error( "d" )
 
 }
@@ -46,7 +41,7 @@ func testHandleHTTP3( w http.ResponseWriter, r *http.Request ) bool {
     closer <- struct{}{}
     return true
 }
-
+/*
 func testHandleHTTP2( w http.ResponseWriter, r *http.Request ) bool {
     ss, err := FetchSession( w, r )
     if err != nil {
@@ -56,7 +51,7 @@ func testHandleHTTP2( w http.ResponseWriter, r *http.Request ) bool {
     w.Write( []byte( "Your sid: " + ss.SID() ) )
     return true
 }
-
+*/
 func testHandleHTTP( w http.ResponseWriter, r *http.Request ) bool {
     w.Write( []byte( "this is index.html" ) )
     return true

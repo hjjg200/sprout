@@ -9,12 +9,11 @@ import (
     "io"
     "net/http"
     "os"
-    "regexp"
     "strconv"
     "time"
-    
+
     "./log"
-    "./session"
+//  "./session"
 )
 
 /*
@@ -23,7 +22,7 @@ import (
 
 const (
     envAppName = "sprout"
-    envVersion = "pre-alpha 0.2"
+    envVersion = "pre-alpha 0.3"
 
     // Directory names must not contain slashes, dots, etc.
     envDirAsset = "asset"
@@ -48,11 +47,6 @@ var (
     EnvFilenameTimeFormat = "20060102-150405"
 )
 
-type route struct {
-    rgx *regexp.Regexp
-    hh  HTTPHandlerFunc
-}
-
 type asset struct {
     modTime time.Time
     reader  *bytes.Reader
@@ -75,23 +69,39 @@ func makeAsset( mt time.Time, r io.Reader ) asset {
 }
 
 type Sprout struct {
-    assets        map[string] asset
-    routes        []route
-    srvProduction *http.Server
-    srvDev        *http.Server
-}
-
-type Server struct {
-    body *http.Server
-    mux  *Mux
+    assets  map[string] asset
+    servers map[string] *Server
 }
 
 func New() *Sprout {
 
     s := &Sprout{}
 
-    s.assets = make( map[string] asset )
-    s.routes = make( []route, 0 )
+    log.Infoln( "Preparing a new Sprout instance..." )
+
+    s.assets  = make( map[string] asset )
+    s.servers = make( map[string] *Server )
+
+    prod, _ := s.NewServer( "production" )
+    prod.Mux().WithCachedAssetServer()
+
+    log.Infoln( "Loacting the latest cache..." )
+    // Load the Latest Cache
+    // Build Cache If None Found
+    lcn, err := s.LatestCacheName()
+    if err != nil {
+        log.Infoln( "Could not load the latest cache, attempting to build one..." )
+        lcn, err = s.BuildCache()
+        if err != nil { log.Severeln( err ) }
+        log.Infoln( "Successfully built a cache:", lcn )
+    } else {
+        err = s.LoadCache( lcn )
+        if err != nil { log.Severeln( err ) }
+        log.Infoln( "Loaded Cache:", lcn )
+    }
+
+    dev, _  := s.NewServer( "dev" )
+    dev.Mux().WithRealtimeAssetServer()
 
     sanityCheck()
     return s
@@ -147,11 +157,11 @@ func ensureDirectory( p string ) error {
     log.Infoln( "Directory ready to go", p )
     return nil
 }
-
+/*
 func FetchSession( w http.ResponseWriter, r *http.Request ) ( *session.Session, error ) {
     return session.Fetch( w, r )
 }
-
+*/
 func WriteStatus( w http.ResponseWriter, code int, msg string ) {
     w.Header().Set( "Content-Type", "text/html" )
     c := fmt.Sprint( code )
@@ -205,7 +215,7 @@ func WriteStatus( w http.ResponseWriter, code int, msg string ) {
 func WriteJSON( w io.Writer, v interface{} ) error {
     return json.NewEncoder( w ).Encode( v )
 }
-
+/*
 func ( s *Sprout ) AddRoute( rgxStr string, hh HTTPHandlerFunc ) error {
 
     rgx, err := regexp.Compile( rgxStr )
@@ -218,18 +228,19 @@ func ( s *Sprout ) AddRoute( rgxStr string, hh HTTPHandlerFunc ) error {
         rgx: rgx,
         hh: hh,
     } )
-    
+
     log.Infoln( "Added a route:", rgxStr )
     return nil
 
-}
+}*/
 
+/*
 func ( s *Sprout ) StartServer( addr string ) error {
 
     hh := newHTTPHandler( s )
     hh  = hh.WithRoutes()
     hh  = hh.WithCachedAssetServer()
-    
+
     log.Infoln( "Starting the production server..." )
 
     // Load the Latest Cache
@@ -250,7 +261,7 @@ func ( s *Sprout ) StartServer( addr string ) error {
         Addr: addr,
         Handler: hh,
     }
-    
+
     log.Infoln( "The production server listens:", addr )
     return s.srvProduction.ListenAndServe()
 
@@ -261,15 +272,16 @@ func ( s *Sprout ) StartDevServer( addr string ) error {
     hh := newHTTPHandler( s )
     hh  = hh.WithRoutes()
     hh  = hh.WithRealtimeAssetServer()
-    
+
     log.Infoln( "Starting the dev server..." )
 
     s.srvDev = &http.Server{
         Addr: addr,
         Handler: hh,
     }
-    
+
     log.Infoln( "The dev server listens:", addr )
     return s.srvDev.ListenAndServe()
 
 }
+*/

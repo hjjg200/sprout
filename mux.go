@@ -2,6 +2,7 @@ package sprout
 
 import (
     "net/http"
+    "regexp"
     "strings"
     "path"
     "os"
@@ -11,26 +12,45 @@ import (
 //   false otherwise
 type Authenticator func( w http.ResponseWriter, r *http.Request ) bool
 
+// HandlerFunc returns true when it handled the request and no other following handlers are needed
+//   returns false when it could not handle the request
 type HandlerFunc func( w http.ResponseWriter, r *http.Request ) bool
 type Mux struct {
     parent  *Sprout
     handler HandlerFunc
 }
 
-func ( s *Sprout ) NewMux *Mux {
+func ( s *Sprout ) NewMux() *Mux {
     return &Mux{
         parent: s,
         handler: func ( w http.ResponseWriter, r *http.Request ) bool {
-            // If none of the handlers handled the request
-            // This is the fallback
-            return NotFound( w, r )
+            return false
         },
     }
 }
 
+// interface http.Handler
 func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
     m.handler( w, r )
 }
+
+/*
+func ( m *Mux ) Append( other *Mux ) {
+    if m.parent != other.parent { return }
+    m.handler = func ( w http.ResponseWriter, r *http.Request ) bool {
+        if m.handler( w, r ) { return true }
+        return other.handler( w, r )
+    }
+}
+
+func ( m *Mux ) Prepend( other *Mux ) {
+    if m.parent != other.parent { return }
+    m.handler = func ( w http.ResponseWriter, r *http.Request ) bool {
+        if other.handler( w, r ) { return true }
+        return m.handler( w, r )
+    }
+}
+*/
 
 func NotFound( w http.ResponseWriter, r *http.Request ) bool {
     WriteStatus( w, 404, "Not Found" )
@@ -40,7 +60,7 @@ func NotFound( w http.ResponseWriter, r *http.Request ) bool {
 // Creates a symlink-like handler for target directory
 //   Example: WithSymlink( "/home/www/somefolder/", "/link/" )
 func ( m *Mux ) WithSymlink( target, link string ) {
-    
+
     switch {
     case target == "",
         link == "",
@@ -48,17 +68,17 @@ func ( m *Mux ) WithSymlink( target, link string ) {
         panic( ErrInvalidDirPath )
         return
     }
-    
+
     target = path.Clean( target )
     link   = path.Clean( link )
-    
+
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
-       
+
         url := r.URL.Path
         // Must not contain dotdot
         // Must have link as prefix
         if isSafeFileURL( url ) && strings.HasPrefix( url, link ) {
-            
+
             // Prepend the target path to url
             var rel string // relative path
             if len( url ) > len( link ) {
@@ -71,8 +91,8 @@ func ( m *Mux ) WithSymlink( target, link string ) {
             //   since two slashes become one slash
             p := path.Clean( target + "/" + rel ) // the file we are looking for
             b := path.Base( p )
-            
-            st, err := f.Stat()
+
+            st, err := os.Stat( p )
             // Not found
             if os.IsNotExist( err ) {
                 WriteStatus( w, 404, "Not Found" )
@@ -84,14 +104,14 @@ func ( m *Mux ) WithSymlink( target, link string ) {
                 WriteStatus( w, 500, "Internal Server Error" )
                 return true
             }
-            
+
             // When it's a directory
             // Later handle this with some option like: forbidDirectoryAccess
             if st.IsDir() {
                 WriteStatus( w, 403, "Forbidden" )
                 return true
             }
-            
+
             f, err := os.Open( p )
             if err != nil {
                 // Status Internal Server Error
@@ -105,11 +125,11 @@ func ( m *Mux ) WithSymlink( target, link string ) {
             f.Close()
             return true
         }
-        
+
         return false
-        
+
     } )
-    
+
 }
 
 func ( m *Mux ) WithRealtimeAssetServer() {
@@ -135,7 +155,7 @@ func ( m *Mux ) WithRealtimeAssetServer() {
                 return true
             }
 
-            st, err := f.Stat()
+            st, err := os.Stat( p )
             // Not found in the asset folder
             if os.IsNotExist( err ) {
                 WriteStatus( w, 404, "Not Found" )
@@ -162,9 +182,9 @@ func ( m *Mux ) WithRealtimeAssetServer() {
             return true
 
         }
-        
+
         return false
-        
+
     } )
 
 }
@@ -191,13 +211,13 @@ func ( m *Mux ) WithCachedAssetServer() {
                 return true
             }
 
-            a, ok := hh.parent.assets[p]
+            a, ok := m.parent.assets[p]
             if ok {
                 // Check if Version Is Set
                 v := r.FormValue( "v" )
                 if v == "" || v != a.hash[:6] {
                     http.Redirect(
-                        w, r, url + "?v=" + a.hash[:6], 
+                        w, r, url + "?v=" + a.hash[:6],
                         http.StatusFound,
                     )
                     return true
@@ -244,7 +264,7 @@ func containsDotDot( v string ) bool {
 }
 func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
-func ( m *Mux ) WithRoute( rgx regexp.Regexp, hf HandlerFunc ) {
+func ( m *Mux ) WithRoute( rgx *regexp.Regexp, hf HandlerFunc ) {
 
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
         if rgx.MatchString( r.URL.Path ) {
@@ -257,23 +277,24 @@ func ( m *Mux ) WithRoute( rgx regexp.Regexp, hf HandlerFunc ) {
 }
 
 func ( m *Mux ) WithAuthenticator( auther Authenticator, realm string ) {
-    
+
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
         if auther( w, r ) {
+            // returns false so that following handlers can handle the request
             return false
         }
         w.Header().Set( "WWW-Authenticate", "Basic realm=\"" + realm + "\"" )
         WriteStatus( w, 401, "Unauthorized" )
+        // returns true since this is the last stop the request will reach
         return true
     } )
-    
+
 }
 
-func ( m *Mux ) WithHandlerFunc( hf HTTPHandlerFunc ) {
+func ( m *Mux ) WithHandlerFunc( hf HandlerFunc ) {
+    mh := m.handler
     m.handler = func ( w http.ResponseWriter, r *http.Request ) bool {
-        if hf( w, r ) {
-            return true
-        }
-        return m.handler( w, r )
+        if mh( w, r ) { return true }
+        return hf( w, r )
     }
 }
