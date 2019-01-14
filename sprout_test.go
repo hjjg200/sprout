@@ -1,8 +1,6 @@
 package sprout
 
 import (
-    "path/filepath"
-    "fmt"
     "context"
     "time"
     "os"
@@ -26,32 +24,40 @@ func TestSprout( t *testing.T ) {
 
     s := New()
     s.AddRoute( "^/close$", testHandleHTTP3 )
-    s.AddRoute( "^/hello_world$", testHandleHTTP2 )
-    s.AddRoute( "^/", testHandleHTTP )
-
-    testCheckError( t, s.BuildCache() )
-    fmt.Println( s.LoadCache( "asset.zip" ) )
+    s.AddRoute( "^/session$", testHandleHTTP2 )
+    s.AddRoute( "^/(index.html?)?$", testHandleHTTP )
 
     go func() {
         testCheckError( t, s.StartServer( ":8080" ) )
+    }()
+    go func() {
+        testCheckError( t, s.StartDevServer( ":8081" ) )
     }()
 
     <- closer
     ctx, _ := context.WithTimeout( context.Background(), 5 * time.Second )
     s.srvProduction.Shutdown( ctx )
+    s.srvDev.Shutdown( ctx )
+    t.Error( "d" )
 
 }
 
-func testHandleHTTP3( w http.ResponseWriter, r *http.Request ) {
+func testHandleHTTP3( w http.ResponseWriter, r *http.Request ) bool {
     closer <- struct{}{}
+    return true
 }
 
-func testHandleHTTP2( w http.ResponseWriter, r *http.Request ) {
-    w.Write( []byte( "hello world" ) )
+func testHandleHTTP2( w http.ResponseWriter, r *http.Request ) bool {
+    ss, err := FetchSession( w, r )
+    if err != nil {
+        w.Write( []byte( "session created!" ) )
+        return true
+    }
+    w.Write( []byte( "Your sid: " + ss.SID() ) )
+    return true
 }
 
-func testHandleHTTP( w http.ResponseWriter, r *http.Request ) {
-    p, _ := filepath.Abs( "./" )
-    fmt.Println( "PATH:", p )
-    w.Write( []byte( p ) )
+func testHandleHTTP( w http.ResponseWriter, r *http.Request ) bool {
+    w.Write( []byte( "this is index.html" ) )
+    return true
 }

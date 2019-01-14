@@ -7,11 +7,14 @@ import (
     "errors"
     "fmt"
     "io"
-    "log"
     "net/http"
+    "os"
     "regexp"
     "strconv"
     "time"
+    
+    "./log"
+    "./session"
 )
 
 /*
@@ -20,7 +23,7 @@ import (
 
 const (
     envAppName = "sprout"
-    envVersion = "pre-alpha 0.1"
+    envVersion = "pre-alpha 0.2"
 
     // Directory names must not contain slashes, dots, etc.
     envDirAsset = "asset"
@@ -28,8 +31,7 @@ const (
 )
 
 var (
-    envOS     string
-    envLogger *log.Logger
+    envOS string
 )
 
 /*
@@ -38,6 +40,8 @@ var (
 
 var (
     ErrNotSupportedOS = errors.New( "sprout: the OS is not supported" )
+    ErrDirectory      = errors.New( "sprout: could not access a necessary directory" )
+    ErrInvalidDirPath = errors.New( "sprout: the given path is invalid" )
 )
 
 var (
@@ -46,7 +50,7 @@ var (
 
 type route struct {
     rgx *regexp.Regexp
-    hh  http.HandlerFunc
+    hh  HTTPHandlerFunc
 }
 
 type asset struct {
@@ -77,6 +81,11 @@ type Sprout struct {
     srvDev        *http.Server
 }
 
+type Server struct {
+    body *http.Server
+    mux  *Mux
+}
+
 func New() *Sprout {
 
     s := &Sprout{}
@@ -84,21 +93,63 @@ func New() *Sprout {
     s.assets = make( map[string] asset )
     s.routes = make( []route, 0 )
 
-    err := sanityCheck()
-    if err != nil {
-        log.Fatalln( err )
-    }
-
+    sanityCheck()
     return s
 
 }
 
 func sanityCheck() error {
     // check if there is any sass, scss if so check sass installed
+    log.Infoln( "Doing a sanity check..." )
     if err := checkOS(); err != nil {
+        log.Severeln( "Sanity check failed!" )
+    }
+    if err := ensureDirectories(); err != nil {
+        log.Severeln( "Sanity check failed!" )
+    }
+    log.Infoln( "Everything looks fine!" )
+    return nil
+}
+
+func ensureDirectories() error {
+    log.Infoln( "Ensuring all the necessary directories..." )
+    err := ensureDirectory( envDirAsset )
+    if err != nil {
+        log.Warnln( "Could not ensure all the directories!" )
         return err
     }
+    err = ensureDirectory( envDirCache )
+    if err != nil {
+        log.Warnln( "Could not ensure all the directories!" )
+        return err
+    }
+    log.Infoln( "Ensured all the directories!" )
     return nil
+}
+
+func ensureDirectory( p string ) error {
+    log.Infoln( "Ensuring a directory...", p )
+    st, err := os.Stat( p )
+    switch {
+    case os.IsNotExist( err ):
+        err = os.Mkdir( p, 0750 )
+        if err != nil {
+            log.Warnln( "Error during ensuring the directory:", p, err )
+            return err
+        }
+    case err != nil:
+        log.Warnln( "Error during ensuring the directory:", p, err )
+        return err
+    case !st.IsDir():
+        log.Warnln( "Error during ensuring the directory:", p, ErrDirectory )
+        return ErrDirectory
+    }
+    log.Infoln( "Directory ready to go", p )
+    return nil
+}
+
+func FetchSession( w http.ResponseWriter, r *http.Request ) ( *session.Session, error ) {
+    return session.Fetch( w, r )
 }
 
 func WriteStatus( w http.ResponseWriter, code int, msg string ) {
@@ -111,6 +162,7 @@ func WriteStatus( w http.ResponseWriter, code int, msg string ) {
         <style>
             html {
                 font-family: sans-serif;
+                line-height: 1.0;
                 padding: 0;
             }
             body {
@@ -154,7 +206,7 @@ func WriteJSON( w io.Writer, v interface{} ) error {
     return json.NewEncoder( w ).Encode( v )
 }
 
-func ( s *Sprout ) AddRoute( rgxStr string, hh http.HandlerFunc ) error {
+func ( s *Sprout ) AddRoute( rgxStr string, hh HTTPHandlerFunc ) error {
 
     rgx, err := regexp.Compile( rgxStr )
     if err != nil {
@@ -166,7 +218,8 @@ func ( s *Sprout ) AddRoute( rgxStr string, hh http.HandlerFunc ) error {
         rgx: rgx,
         hh: hh,
     } )
-
+    
+    log.Infoln( "Added a route:", rgxStr )
     return nil
 
 }
@@ -176,14 +229,29 @@ func ( s *Sprout ) StartServer( addr string ) error {
     hh := newHTTPHandler( s )
     hh  = hh.WithRoutes()
     hh  = hh.WithCachedAssetServer()
+    
+    log.Infoln( "Starting the production server..." )
 
     // Load the Latest Cache
     // Build Cache If None Found
+    lcn, err := s.LatestCacheName()
+    if err != nil {
+        log.Infoln( "Could not load the latest cache, attempting to build one..." )
+        lcn, err = s.BuildCache()
+        if err != nil { return err }
+        log.Infoln( "Successfully built a cache:", lcn )
+    } else {
+        err = s.LoadCache( lcn )
+        if err != nil { return err }
+        log.Infoln( "Loaded Cache:", lcn )
+    }
 
     s.srvProduction = &http.Server{
         Addr: addr,
         Handler: hh,
     }
+    
+    log.Infoln( "The production server listens:", addr )
     return s.srvProduction.ListenAndServe()
 
 }
@@ -193,11 +261,15 @@ func ( s *Sprout ) StartDevServer( addr string ) error {
     hh := newHTTPHandler( s )
     hh  = hh.WithRoutes()
     hh  = hh.WithRealtimeAssetServer()
+    
+    log.Infoln( "Starting the dev server..." )
 
     s.srvDev = &http.Server{
         Addr: addr,
         Handler: hh,
     }
+    
+    log.Infoln( "The dev server listens:", addr )
     return s.srvDev.ListenAndServe()
 
 }

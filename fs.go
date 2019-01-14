@@ -111,7 +111,7 @@ func ( s *Sprout ) LoadCache( fn string ) error {
 
 }
 
-func ( s *Sprout ) BuildCache() error {
+func ( s *Sprout ) BuildCache() ( string, error ) {
 
     /*
      | Prepare the Zip File
@@ -121,7 +121,7 @@ func ( s *Sprout ) BuildCache() error {
     fn      := envDirCache + "/" + t + ".tmp"
     f, err  := os.OpenFile( fn, os.O_RDWR | os.O_CREATE, 0600 )
     if err != nil {
-        return err
+        return "", err
     }
 
     zw := zip.NewWriter( f )
@@ -215,11 +215,11 @@ func ( s *Sprout ) BuildCache() error {
 
     err = foreach( envDirAsset, s.ProcessAsset )
     if err != nil {
-        return err
+        return "", err
     }
     err = foreach( envDirAsset, archive )
     if err != nil {
-        return err
+        return "", err
     }
 
     /*
@@ -229,7 +229,7 @@ func ( s *Sprout ) BuildCache() error {
     zw.Close()
     _, err = f.Seek( 0, os.SEEK_SET )
     if err != nil {
-        return err
+        return "", err
     }
 
     /*
@@ -241,12 +241,13 @@ func ( s *Sprout ) BuildCache() error {
     hs := fmt.Sprintf( "%x", h.Sum( nil ) )
     f.Close()
 
-    err = os.Rename( fn, envDirCache + "/" + formatCacheName( t, hs ) )
+    cn := formatCacheName( t, hs )
+    err = os.Rename( fn, envDirCache + "/" + cn )
     if err != nil {
-        return err
+        return "", err
     }
 
-    return nil
+    return cn, nil
 
 }
 
