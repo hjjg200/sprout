@@ -20,6 +20,18 @@ type Mux struct {
     handler HandlerFunc
 }
 
+const (
+    MethodGet = 1 << iota
+    MethodHead
+    MethodPost
+    MethodPut
+    MethodPatch
+    MethodDelete
+    MethodConnect
+    MethodOptions
+    MethodTrace
+)
+
 func ( s *Sprout ) NewMux() *Mux {
     return &Mux{
         parent: s,
@@ -264,12 +276,25 @@ func containsDotDot( v string ) bool {
 }
 func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
-func ( m *Mux ) WithRoute( rgx *regexp.Regexp, hf HandlerFunc ) {
+func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
+
+    _flag := make( map[string] bool )
+    _flag[http.MethodGet]     = MethodGet     & mflag == MethodGet
+    _flag[http.MethodHead]    = MethodHead    & mflag == MethodHead
+    _flag[http.MethodPost]    = MethodPost    & mflag == MethodPost
+    _flag[http.MethodPut]     = MethodPut     & mflag == MethodPut
+    _flag[http.MethodPatch]   = MethodPatch   & mflag == MethodPatch
+    _flag[http.MethodDelete]  = MethodDelete  & mflag == MethodDelete
+    _flag[http.MethodConnect] = MethodConnect & mflag == MethodConnect
+    _flag[http.MethodOptions] = MethodOptions & mflag == MethodOptions
+    _flag[http.MethodTrace]   = MethodTrace   & mflag == MethodTrace
 
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
-        if rgx.MatchString( r.URL.Path ) {
-            hf( w, r )
-            return true
+        if _flag[r.Method] {
+            if rgx.MatchString( r.URL.Path ) {
+                hf( w, r )
+                return true
+            }
         }
         return false
     } )

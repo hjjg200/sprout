@@ -2,6 +2,7 @@ package sprout
 
 import (
     "bytes"
+    "erorrs"
     "os/exec"
     "runtime"
 )
@@ -15,7 +16,7 @@ import (
 
 func checkOS() error {
     switch runtime.GOOS {
-    case "windows", "linux", "darwin", "freebsd", "openbsd":
+    case "windows", "linux", "darwin": //, "freebsd", "openbsd":
         envOS = runtime.GOOS
         return nil
     }
@@ -55,13 +56,27 @@ func ( s *Sprout ) doesCommandExist( cmd string ) bool {
     return false
 }
 
-func ( s *Sprout ) runCommand( cmd string ) error {
-    var e *exec.Cmd
+func ( s *Sprout ) runCommand( args ...string ) error {
+
+    var (
+        e *exec.Cmd
+        stderr bytes.Buffer
+    )
+
     switch envOS {
     case "linux", "darwin": //, "freebsd", "openbsd":
-        e = exec.Command( "bash", "-c", cmd )
+        e = exec.Command( "bash", "-c", args... )
     case "windows":
-        e = exec.Command( "cmd", "/C", cmd )
+        e = exec.Command( "cmd", "/C", args... )
     }
-    return e.Run()
+
+    e.Stderr = &stderr
+    err := e.Run()
+
+    if err != nil {
+        return errors.New( fmt.Sprint( err, ": ", stderr.String() ) )
+    } else {
+        return nil
+    }
+
 }

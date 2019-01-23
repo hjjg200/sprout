@@ -22,7 +22,7 @@ import (
 
 const (
     envAppName = "sprout"
-    envVersion = "pre-alpha 0.3"
+    envVersion = "pre-alpha 0.4"
 
     // Directory names must not contain slashes, dots, etc.
     envDirAsset = "asset"
