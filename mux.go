@@ -131,8 +131,11 @@ func ( m *Mux ) WithSymlink( target, link string ) {
                 return true
             }
 
-            // Set it to octat stream so that it won't be executed or compiled
-            w.Header().Set( "Content-Type", "application/octat-stream" )
+            // Set it to octet stream so that it won't be executed or compiled
+            w.Header().Set( "Content-Type", "application/octet-stream" )
+            w.Header().Set( "Content-Transfer-Encoding", "Binary" )
+            w.Header().Set( "Content-Disposition", "attachment; filename=\"" + b + "\"" )
+
             http.ServeContent( w, r, b, st.ModTime(), f )
             f.Close()
             return true
