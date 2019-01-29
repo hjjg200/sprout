@@ -12,6 +12,8 @@ import (
     "sort"
     "strings"
     "time"
+
+    "github.com/hjjg200/go/together"
 )
 
 /*
@@ -19,6 +21,8 @@ import (
  |
  + Note that this file uses filepath for path operations while the others use path, as this file deals with the underlying filesystem.
  */
+
+var fileHoldGroup = together.NewHoldGroup()
 
 // For sorting cache names
 type cacheNames []string
@@ -271,18 +275,55 @@ func ( s *Sprout ) ProcessAsset( p string ) error {
         return nil
     }
 
+    // If the file exists
+
+        // Lock mutex so that a file won't be processed multiple times at the same time
+    fileHoldGroup.HoldAt( p )
+    defer fileHoldGroup.UnholdAt( p )
+
     bs  := filepath.Base( p )
     dir := filepath.ToSlash( filepath.Dir( p ) )
-    ext := filepath.Ext( p )
+    ext := strings.ToLower( filepath.Ext( p ) )
 
     switch ext {
     case ".sass", ".scss":
-        css := dir + "/" + bs[:len( bs ) - 4] + "css"
+        css := dir + "/" + bs[:len( bs ) - 5] + ".css"
         cmd := fmt.Sprintf( "sass %s %s", dir + "/" + bs, css )
         err := s.runCommand( cmd )
         if err != nil {
             return err
         }
+    case ".css":
+
+        // If it is a css file, look for a sass file
+
+        pb   := dir + "/" + bs[:len( bs ) - 4]
+        scss := pb + ".scss"
+        sass := pb + ".sass"
+        // Look for scss
+        st, err = os.Stat( scss )
+        if err == nil && !st.IsDir() {
+            cmd := fmt.Sprintf( "sass %s %s", scss, pb + ".css" )
+            err  = s.runCommand( cmd )
+            if err != nil {
+                return err
+            }
+            return nil
+        }
+        // Look for sass
+        st, err = os.Stat( sass )
+        if err == nil && !st.IsDir() {
+            cmd := fmt.Sprintf( "sass %s %s", sass, pb + ".css" )
+            err  = s.runCommand( cmd )
+            if err != nil {
+                return err
+            }
+            return nil
+        }
+
+        // Return nil since a css doesn't have to have a matching sass file
+        return nil
+
     }
 
     return nil

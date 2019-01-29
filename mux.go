@@ -153,15 +153,18 @@ func ( m *Mux ) WithRealtimeAssetServer() {
             // Remove the first slash at the beginning
             p   := path.Clean( url[1:] )
             b   := path.Base( p )
-            ext := path.Ext( p )
+            ext := strings.ToLower( path.Ext( p ) )
 
             // Whitelist of Asset Extensions
             //   This is temporary security measure
             //   Liable to being removed or modified
             //   Later use some config var like: whitelistedExtensions
-            switch ext {
-            case ".css", ".js":
-            default:
+
+            found := false
+            for _, i := range m.parent.whitelistedExtensions {
+                if i == ext { found = true; break; }
+            }
+            if !found {
                 // Status Not Found
                 WriteStatus( w, 404, "Not Found" )
                 return true
@@ -182,6 +185,15 @@ func ( m *Mux ) WithRealtimeAssetServer() {
                 WriteStatus( w, 403, "Forbidden" )
                 return true
             }
+
+            // Process the asset
+            err = m.parent.ProcessAsset( p )
+            if err != nil {
+                panic( err )
+                WriteStatus( w, 500, "Internal Server Error" )
+                return true
+            }
+
             f, err := os.Open( p )
             if err != nil {
                 // Status Internal Server Error

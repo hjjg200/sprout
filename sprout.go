@@ -71,11 +71,17 @@ func makeAsset( mt time.Time, r io.Reader ) asset {
 type Sprout struct {
     assets  map[string] asset
     servers map[string] *Server
+
+    whitelistedExtensions []string
 }
 
 func New() *Sprout {
 
     s := &Sprout{}
+
+    // Assign the default whitelisted extensions
+    s.whitelistedExtensions = make( []string, len( defaultWhitelistedExtensions ) )
+    copy( s.whitelistedExtensions, defaultWhitelistedExtensions )
 
     log.Infoln( "Preparing a new Sprout instance..." )
 

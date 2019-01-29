@@ -2,7 +2,8 @@ package sprout
 
 import (
     "bytes"
-    "erorrs"
+    "errors"
+    "fmt"
     "os/exec"
     "runtime"
 )
@@ -65,9 +66,9 @@ func ( s *Sprout ) runCommand( args ...string ) error {
 
     switch envOS {
     case "linux", "darwin": //, "freebsd", "openbsd":
-        e = exec.Command( "bash", "-c", args... )
+        e = exec.Command( "bash", append( []string{ "-c" }, args... )... )
     case "windows":
-        e = exec.Command( "cmd", "/C", args... )
+        e = exec.Command( "cmd", append( []string{ "/C" }, args... )... )
     }
 
     e.Stderr = &stderr
