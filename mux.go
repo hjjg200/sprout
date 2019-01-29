@@ -147,6 +147,10 @@ func ( m *Mux ) WithSymlink( target, link string ) {
 
 }
 
+/*
+ + The Asset-oriented part
+ */
+
 func ( m *Mux ) WithRealtimeAssetServer() {
 
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
@@ -291,7 +295,11 @@ func containsDotDot( v string ) bool {
 }
 func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
-func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
+/*
+ + The Route-oriented part
+ */
+
+func makeMethodChecker( mflag int ) map[string] bool {
 
     _flag := make( map[string] bool )
     _flag[http.MethodGet]     = MethodGet     & mflag == MethodGet
@@ -304,6 +312,28 @@ func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
     _flag[http.MethodOptions] = MethodOptions & mflag == MethodOptions
     _flag[http.MethodTrace]   = MethodTrace   & mflag == MethodTrace
 
+    return _flag
+
+}
+
+func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
+
+    _flag := makeMethodChecker( mflag )
+    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
+        if _flag[r.Method] {
+            if rgx.MatchString( r.URL.Path ) {
+                hf( w, r )
+                return true
+            }
+        }
+        return false
+    } )
+
+}
+
+func ( m *Mux ) WithLocalizedRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
+
+    _flag := makeMethodChecker( mflag )
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
         if _flag[r.Method] {
             if rgx.MatchString( r.URL.Path ) {
