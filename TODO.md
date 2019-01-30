@@ -4,3 +4,5 @@
 1. Properly implement httphandler.go in an intuitive way
     - Put methods like context.Background()
     - Method handling ^.+/index.html?$
+1. CachedRoute RealtimeRoute, template
+1. ServeCachedAsset, ...
