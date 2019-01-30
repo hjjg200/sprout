@@ -2,8 +2,6 @@ package sprout
 
 import (
     "encoding/json"
-    "io/ioutil"
-    "path"
     "reflect"
     "strings"
 )
@@ -14,11 +12,11 @@ type localizer struct {
     locales map[string] map[string] string
 }
 
-func ( sp *Sprout ) newLocalizer() ( *localizer, error ) {
+func ( sp *Sprout ) newLocalizer() ( *localizer ) {
 
     lc         := &localizer{}
     lc.locales  = make( map[string] map[string] string )
-
+/*
     _locale_dir       := sp.cwd + "/" + envDirLocale
     _file_infos, _err := ioutil.ReadDir( _locale_dir )
     if _err != nil {
@@ -78,8 +76,64 @@ func ( sp *Sprout ) newLocalizer() ( *localizer, error ) {
         }
 
     }
+*/
+    return lc
 
-    return lc, nil
+}
+
+func ( lc *localizer ) removeLocale( _locale string ) error {
+    if _, _ok := lc.locales[_locale]; _ok {
+        delete( lc.locales, _locale )
+        return nil
+    } else {
+        return ErrInvalidLocale
+    }
+}
+
+func ( lc *localizer ) appendLocale( _locale string, _json []byte ) error {
+
+    var _json_interface interface{}
+    _err := json.Unmarshal( _json, &_json_interface )
+    if _err != nil {
+        return _err
+    }
+
+    var _map_func func ( string, reflect.Value )
+    _locale_map := make( map[string] string )
+    _map_func    = func ( __base_key string, __map reflect.Value ) {
+        for _, __k := range __map.MapKeys() {
+
+            __it       := __map.MapIndex( __k )
+            __next_key := __base_key
+            if __next_key != "" {
+                __next_key = __next_key + "." + __k.String()
+            } else {
+                __next_key = __k.String()
+            }
+
+            switch __v := __it.Interface().(type) {
+            case string:
+                _locale_map[__next_key] = __v
+            default:
+                __rv := reflect.ValueOf( __v )
+                if __rv.Kind() == reflect.Map {
+                    _map_func( __next_key, __rv )
+                }
+            }
+        }
+    }
+
+    _map_func( "", reflect.ValueOf( _json_interface ) )
+
+    if _, _ok := lc.locales[_locale]; !_ok {
+        lc.locales[_locale] = make( map[string] string )
+    }
+    
+    for _k, _v := range _locale_map {
+        lc.locales[_locale][_k] = _v
+    }
+
+    return nil
 
 }
 

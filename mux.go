@@ -82,7 +82,11 @@ func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
             if m.parent.localizer.hasLocale( _parts[0] ) {
                 // Set locale cookie to loccale
                 _locale    := _parts[0]
-                r.URL.Path  = "/" + _parts[1]
+                if len( _parts ) > 1 {
+                    r.URL.Path = "/" + _parts[1]
+                } else {
+                    r.URL.Path = "/"
+                }
                 _set_locale( _locale )
             } else {
                 // No locale in the url

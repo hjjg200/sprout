@@ -2,6 +2,7 @@ package sprout
 
 import (
     "archive/zip"
+    "bytes"
     "crypto/sha256"
     "errors"
     "fmt"
@@ -11,6 +12,7 @@ import (
     "path/filepath"
     "sort"
     "strings"
+    "text/template"
     "time"
 
     "github.com/hjjg200/go/together"
@@ -67,6 +69,10 @@ func ( s *Sprout ) LatestCacheName() ( string, error ) {
         return "", err
     }
 
+    if len( fis ) == 0 {
+        return "", ErrNoAvailableCache
+    }
+
     cn := make( cacheNames, len( fis ) )
     for i := range fis {
         cn[i] = fis[i].Name()
@@ -79,14 +85,16 @@ func ( s *Sprout ) LatestCacheName() ( string, error ) {
 
 func ( s *Sprout ) LoadCache( fn string ) error {
 
-    zr, err := zip.OpenReader( envDirCache + "/" + fn )
-    if err != nil {
-        return err
+    zr, _err := zip.OpenReader( envDirCache + "/" + fn )
+    if _err != nil {
+        return _err
     }
     defer zr.Close()
 
-    // Empty s.assets
+    // Empty slices
     s.assets = make( map[string] asset )
+    s.templates = make( map[string] *template.Template )
+    s.localizer = s.newLocalizer()
 
     // Assign files
     for _, f := range zr.File {
@@ -97,18 +105,32 @@ func ( s *Sprout ) LoadCache( fn string ) error {
             continue
         }
 
-        frc, err := f.Open()
-        if err != nil {
-            panic( err )
+        frc, _err := f.Open()
+        if _err != nil {
+            panic( _err )
             continue
         }
 
-        if strings.HasPrefix( f.Name, envDirAsset + "/" ) {
+        switch {
+        case strings.HasPrefix( f.Name, envDirAsset ):
             s.assets[fn] = makeAsset(
                 f.Modified, frc,
             )
-        } else if strings.HasPrefix( f.Name, envDirTemplate + "/" ) {
+        case strings.HasPrefix( f.Name, envDirLocale ):
             _buf := bytes.Buffer{}
+            _buf.ReadFrom( frc )
+            _base   := filepath.Base( f.Name )
+            _ext    := filepath.Ext( _base )
+            _locale := _base[:len( _base ) - len( _ext )]
+            s.localizer.appendLocale( _locale, _buf.Bytes() )
+        case strings.HasPrefix( f.Name, envDirTemplate ):
+            _buf := bytes.Buffer{}
+            _buf.ReadFrom( frc )
+            s.templates[f.Name] = template.Must( template.New( f.Name ).Parse( _buf.String() ) )
+            if _err != nil {
+                // Delete failed ones
+                delete( s.templates, f.Name )
+            }
         }
 
         frc.Close()
@@ -225,9 +247,15 @@ func ( s *Sprout ) BuildCache() ( string, error ) {
     if err != nil {
         return "", err
     }
-    err = foreach( envDirAsset, archive )
-    if err != nil {
-        return "", err
+    
+    _dirs_to_cache := []string{
+        envDirAsset, envDirTemplate, envDirLocale,
+    }
+    for _, _dir := range _dirs_to_cache {
+        err = foreach( _dir, archive )
+        if err != nil {
+            return "", err
+        }
     }
 
     /*

@@ -45,7 +45,6 @@ var (
     ErrNotSupportedOS = errors.New( "sprout: the OS is not supported" )
     ErrDirectory      = errors.New( "sprout: could not access a necessary directory" )
     ErrInvalidDirPath = errors.New( "sprout: the given path is invalid" )
-    ErrInvalidLocale  = errors.New( "sprout: the given locale is invalid" )
 )
 
 var (
@@ -114,19 +113,18 @@ func New() *Sprout {
         _lcn, _err = s.BuildCache()
         if _err != nil { log.Severeln( _err ) }
         log.Infoln( "Successfully built a cache:", _lcn )
-    } else {
-        _err = s.LoadCache( _lcn )
-        if _err != nil { log.Severeln( _err ) }
-        log.Infoln( "Loaded Cache:", _lcn )
     }
+    
+    _err = s.LoadCache( _lcn )
+    if _err != nil { log.Severeln( _err ) }
+    log.Infoln( "Loaded Cache:", _lcn )
 
     dev, _  := s.NewServer( "dev" )
     dev.Mux().WithRealtimeAssetServer()
 
     // Localizer
     log.Infoln( "Attempting to load locales" )
-    s.localizer, _err = s.newLocalizer()
-    if _err == nil {
+    if len( s.localizer.locales ) > 0 {
         for _k, _ := range s.localizer.locales {
             s.SetDefaultLocale( _k )
             break
@@ -166,15 +164,15 @@ func sanityCheck() error {
 
 func ensureDirectories() error {
     log.Infoln( "Ensuring all the necessary directories..." )
-    err := ensureDirectory( envDirAsset )
-    if err != nil {
-        log.Warnln( "Could not ensure all the directories!" )
-        return err
+    _dirs_to_ensure := []string{
+        envDirAsset, envDirCache, envDirLocale, envDirTemplate,
     }
-    err = ensureDirectory( envDirCache )
-    if err != nil {
-        log.Warnln( "Could not ensure all the directories!" )
-        return err
+    for _, _dir := range _dirs_to_ensure {
+        _err := ensureDirectory( _dir )
+        if _err != nil {
+            log.Warnln( "Could not ensure all the directories!" )
+            return _err
+        }
     }
     log.Infoln( "Ensured all the directories!" )
     return nil

@@ -5,6 +5,7 @@ import (
     "regexp"
     "os"
     "testing"
+    "runtime"
     "net/http"
 )
 
@@ -18,7 +19,11 @@ func testCheckError( t *testing.T, err error ) {
 
 func TestSprout( t *testing.T ) {
 
-    os.Chdir( "D:\\sprout" )
+    if runtime.GOOS == "windows" {
+        os.Chdir( "D:\\sprout" )
+    } else if runtime.GOOS == "darwin" {
+        os.Chdir( "/Users/anton/sprout" )
+    }
 
     closer = make( chan struct{}, 1 )
 
