@@ -43,6 +43,61 @@ func ( s *Sprout ) NewMux() *Mux {
 
 // interface http.Handler
 func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
+
+    // Check Locale
+    _lcc        := len( m.parent.localizer.locales )
+    _get_locale := func () string {
+        __cookie, __err := r.Cookie( cookie_locale )
+        if __err != nil {
+            return ""
+        }
+        return __cookie.Value
+    }
+    _set_locale := func( _lc string ) {
+        __cookie, __err := r.Cookie( cookie_locale )
+        if __err != nil {
+            __cookie = &http.Cookie{
+                Name: cookie_locale,
+                Value: _lc,
+                Path: "/", // for every page
+                MaxAge: 0, // persistent cookie
+            }
+        } else {
+            __cookie.Value = _lc
+            __cookie.Path  = "/"
+        }
+        http.SetCookie( w, __cookie )
+    }
+    _check_locale := func() {
+        if _get_locale() == "" {
+            _set_locale( m.parent.default_locale )
+        }
+    }
+
+    _url := r.URL.Path
+
+    if _lcc > 0 {
+        if len( _url ) > 1 {
+            _parts := strings.SplitN( _url[1:], "/", 2 )
+            if m.parent.localizer.hasLocale( _parts[0] ) {
+                // Set locale cookie to loccale
+                _locale    := _parts[0]
+                r.URL.Path  = "/" + _parts[1]
+                _set_locale( _locale )
+            } else {
+                // No locale in the url
+                    // redirect to default or locale in cookie
+                    // redirect if lcc > 1
+                _check_locale()
+            }
+        } else {
+            // Root
+                // Check if cookie has locale if not laod default and redirect
+                // redirect if lcc > 1
+            _check_locale()
+        }
+    }
+
     m.handler( w, r )
 }
 
@@ -330,7 +385,7 @@ func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
     } )
 
 }
-
+/*
 func ( m *Mux ) WithRoute2( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
 
     _flag       := makeMethodChecker( mflag )
@@ -348,7 +403,8 @@ func ( m *Mux ) WithRoute2( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
             __cookie = &http.Cookie{
                 Name: cookie_locale,
                 Value: lc,
-                MaxAge: 0,
+                Path: "/", // for every page
+                MaxAge: 0, // persistent cookie
             }
         } else {
             __cookie.Value = lc
@@ -399,7 +455,7 @@ func ( m *Mux ) WithRoute2( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
         return false
     } )
 
-}
+}*/
 
 func ( m *Mux ) WithTemplate( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
 

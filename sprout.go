@@ -11,6 +11,7 @@ import (
     "os"
     "path/filepath"
     "strconv"
+    "text/template"
     "time"
 
     "./log"
@@ -26,9 +27,10 @@ const (
     envVersion = "pre-alpha 0.4"
 
     // Directory names must not contain slashes, dots, etc.
-    envDirAsset  = "asset"
-    envDirCache  = "cache"
-    envDirLocale = "locale"
+    envDirAsset    = "asset"
+    envDirCache    = "cache"
+    envDirLocale   = "locale"
+    envDirTemplate = "template"
 )
 
 var (
@@ -74,6 +76,7 @@ func makeAsset( mt time.Time, r io.Reader ) asset {
 type Sprout struct {
     cwd       string
     assets    map[string] asset
+    templates map[string] *template.Template
     servers   map[string] *Server
     localizer *localizer
     default_locale string

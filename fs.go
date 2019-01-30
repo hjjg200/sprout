@@ -103,9 +103,13 @@ func ( s *Sprout ) LoadCache( fn string ) error {
             continue
         }
 
-        s.assets[fn] = makeAsset(
-            f.Modified, frc,
-        )
+        if strings.HasPrefix( f.Name, envDirAsset + "/" ) {
+            s.assets[fn] = makeAsset(
+                f.Modified, frc,
+            )
+        } else if strings.HasPrefix( f.Name, envDirTemplate + "/" ) {
+            _buf := bytes.Buffer{}
+        }
 
         frc.Close()
 
@@ -192,7 +196,7 @@ func ( s *Sprout ) BuildCache() ( string, error ) {
         /*
         | Assign Asset to s.assets
         */
-
+        /*
         f, err := os.Open( path )
         if err != nil {
             return err
@@ -202,7 +206,7 @@ func ( s *Sprout ) BuildCache() ( string, error ) {
             st.ModTime(), f,
         )
 
-        f.Close()
+        f.Close()*/
 
         // Write to zip
         _, err3 = io.Copy( w, pw )
