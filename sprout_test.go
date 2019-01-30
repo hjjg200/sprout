@@ -1,6 +1,7 @@
 package sprout
 
 import (
+    "fmt"
     "regexp"
     "os"
     "testing"
@@ -24,12 +25,15 @@ func TestSprout( t *testing.T ) {
     s := New()
 
     prod, _ := s.Server( "production" )
-    prod.Mux().WithRoute( regexp.MustCompile( "^/close$" ), testHandleHTTP3 )
-    prod.Mux().WithRoute( regexp.MustCompile( "^/(index.html?)?$" ), testHandleHTTP )
+    prod.Mux().WithRoute( MethodGet, regexp.MustCompile( "^/close$" ), testHandleHTTP3 )
+    prod.Mux().WithRoute2( MethodGet, regexp.MustCompile( "^/(index.html?)?$" ), testHandleHTTP )
+    prod.Mux().WithHandlerFunc( NotFound )
 
     go func() {
         testCheckError( t, prod.Start( ":8080" ) )
     }()
+
+    fmt.Println( s.localizer.localize( "{%ui.button%} is good but {%ab%} is bad", "en-us", 3 ) )
 
     <- closer
     prod.Stop()

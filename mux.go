@@ -331,12 +331,85 @@ func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
 
 }
 
-func ( m *Mux ) WithLocalizedRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
+func ( m *Mux ) WithRoute2( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
+
+    _flag       := makeMethodChecker( mflag )
+    _lcc        := len( m.parent.localizer.locales )
+    _get_locale := func ( r *http.Request ) string {
+        __cookie, __err := r.Cookie( cookie_locale )
+        if __err != nil {
+            return ""
+        }
+        return __cookie.Value
+    }
+    _set_locale := func ( w http.ResponseWriter, r *http.Request, lc string ) {
+        __cookie, __err := r.Cookie( cookie_locale )
+        if __err != nil {
+            __cookie = &http.Cookie{
+                Name: cookie_locale,
+                Value: lc,
+                MaxAge: 0,
+            }
+        } else {
+            __cookie.Value = lc
+        }
+        http.SetCookie( w, __cookie )
+    }
+    _check_locale := func ( w http.ResponseWriter, r *http.Request ) {
+        if _get_locale( r ) == "" {
+            _set_locale( w, r, m.parent.default_locale )
+        }
+    }
+
+    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
+
+        __url := r.URL.Path
+
+        if _flag[r.Method] {
+
+            if _lcc > 0 {
+                if len( __url ) > 1 {
+                    __parts := strings.SplitN( __url[1:], "/", 2 )
+                    if m.parent.localizer.hasLocale( __parts[0] ) {
+                        // Set locale cookie to loccale
+                        __locale := __parts[0]
+                        __url     = "/" + __parts[1]
+                        _set_locale( w, r, __locale )
+                    } else {
+                        // No locale in the url
+                            // redirect to default or locale in cookie
+                            // redirect if lcc > 1
+                        _check_locale( w, r )
+                    }
+                } else {
+                    // Root
+                        // Check if cookie has locale if not laod default and redirect
+                        // redirect if lcc > 1
+                    _check_locale( w, r )
+                }
+            }
+
+            if rgx.MatchString( __url ) {
+                hf( w, r )
+                return true
+            }
+
+        }
+
+        return false
+    } )
+
+}
+
+func ( m *Mux ) WithTemplate( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
 
     _flag := makeMethodChecker( mflag )
+
     m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
         if _flag[r.Method] {
-            if rgx.MatchString( r.URL.Path ) {
+
+            __url := r.URL.Path
+            if rgx.MatchString( __url ) {
                 hf( w, r )
                 return true
             }

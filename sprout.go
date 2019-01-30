@@ -9,6 +9,7 @@ import (
     "io"
     "net/http"
     "os"
+    "path/filepath"
     "strconv"
     "time"
 
@@ -25,8 +26,9 @@ const (
     envVersion = "pre-alpha 0.4"
 
     // Directory names must not contain slashes, dots, etc.
-    envDirAsset = "asset"
-    envDirCache = "cache"
+    envDirAsset  = "asset"
+    envDirCache  = "cache"
+    envDirLocale = "locale"
 )
 
 var (
@@ -41,6 +43,7 @@ var (
     ErrNotSupportedOS = errors.New( "sprout: the OS is not supported" )
     ErrDirectory      = errors.New( "sprout: could not access a necessary directory" )
     ErrInvalidDirPath = errors.New( "sprout: the given path is invalid" )
+    ErrInvalidLocale  = errors.New( "sprout: the given locale is invalid" )
 )
 
 var (
@@ -69,15 +72,23 @@ func makeAsset( mt time.Time, r io.Reader ) asset {
 }
 
 type Sprout struct {
-    assets  map[string] asset
-    servers map[string] *Server
+    cwd       string
+    assets    map[string] asset
+    servers   map[string] *Server
+    localizer *localizer
+    default_locale string
 
     whitelistedExtensions []string
 }
 
 func New() *Sprout {
 
-    s := &Sprout{}
+    s      := &Sprout{}
+    // Cwd
+    _cwd, _ := filepath.Abs( "./" )
+    s.cwd    = filepath.ToSlash( filepath.Clean( _cwd ) )
+
+    sanityCheck()
 
     // Assign the default whitelisted extensions
     s.whitelistedExtensions = make( []string, len( defaultWhitelistedExtensions ) )
@@ -94,24 +105,47 @@ func New() *Sprout {
     log.Infoln( "Loacting the latest cache..." )
     // Load the Latest Cache
     // Build Cache If None Found
-    lcn, err := s.LatestCacheName()
-    if err != nil {
+    _lcn, _err := s.LatestCacheName()
+    if _err != nil {
         log.Infoln( "Could not load the latest cache, attempting to build one..." )
-        lcn, err = s.BuildCache()
-        if err != nil { log.Severeln( err ) }
-        log.Infoln( "Successfully built a cache:", lcn )
+        _lcn, _err = s.BuildCache()
+        if _err != nil { log.Severeln( _err ) }
+        log.Infoln( "Successfully built a cache:", _lcn )
     } else {
-        err = s.LoadCache( lcn )
-        if err != nil { log.Severeln( err ) }
-        log.Infoln( "Loaded Cache:", lcn )
+        _err = s.LoadCache( _lcn )
+        if _err != nil { log.Severeln( _err ) }
+        log.Infoln( "Loaded Cache:", _lcn )
     }
 
     dev, _  := s.NewServer( "dev" )
     dev.Mux().WithRealtimeAssetServer()
 
-    sanityCheck()
+    // Localizer
+    log.Infoln( "Attempting to load locales" )
+    s.localizer, _err = s.newLocalizer()
+    if _err == nil {
+        for _k, _ := range s.localizer.locales {
+            s.SetDefaultLocale( _k )
+            break
+        }
+        log.Infoln( "Successfully loaded", len( s.localizer.locales ), "locales" )
+    } else {
+        log.Infoln( "No locale file has been found" )
+    }
+
     return s
 
+}
+
+func ( sp *Sprout ) SetDefaultLocale( locale string ) error {
+    _, _ok := sp.localizer.locales[locale]
+    if !_ok {
+        log.Infoln( locale, "is not a valid locale. The default locale has not been changed." )
+        return ErrInvalidLocale
+    }
+    log.Infoln( "Changed the default locale to", locale )
+    sp.default_locale = locale
+    return nil
 }
 
 func sanityCheck() error {
@@ -163,6 +197,7 @@ func ensureDirectory( p string ) error {
     log.Infoln( "Directory ready to go", p )
     return nil
 }
+
 /*
 func FetchSession( w http.ResponseWriter, r *http.Request ) ( *session.Session, error ) {
     return session.Fetch( w, r )
