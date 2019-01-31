@@ -29,9 +29,22 @@ func TestSprout( t *testing.T ) {
 
     s := New()
 
+    lcn, _ := s.BuildCache()
+    s.LoadCache( lcn )
     prod, _ := s.Server( "production" )
     prod.Mux().WithRoute( MethodGet, regexp.MustCompile( "^/close$" ), testHandleHTTP3 )
-    prod.Mux().WithRoute( MethodGet, regexp.MustCompile( "^/(index.html?)?$" ), testHandleHTTP )
+    df := func() interface{} {
+        return map[string] map[string] string {
+            "data2": map[string] string{
+                "1": "ok",
+                "2": "nice",
+            },
+        }
+    }
+    prod.Mux().WithRoute(
+        MethodGet, regexp.MustCompile( "^/(index.html?)?$" ),
+        s.ServeCachedTemplate( "template/index.html", df ),
+    )
     prod.Mux().WithHandlerFunc( NotFound )
 
     go func() {
@@ -46,7 +59,7 @@ func TestSprout( t *testing.T ) {
 
 }
 
-func testHandleHTTP3( w http.ResponseWriter, r *http.Request ) bool {
+func testHandleHTTP3( req *Request ) bool {
     closer <- struct{}{}
     return true
 }

@@ -14,6 +14,9 @@ var (
     defaultWhitelistedExtensions = []string{
         ".css", ".js", ".jpg", ".jpeg", ".png", ".gif", ".ico", ".icn",
     }
+    template_extensions = []string{
+        ".html", ".htm",
+    }
 )
 
 var (

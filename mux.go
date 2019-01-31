@@ -1,6 +1,7 @@
 package sprout
 
 import (
+    "bytes"
     "net/http"
     "regexp"
     "strings"
@@ -10,11 +11,17 @@ import (
 
 // Authenticator returns true if the given request contains suitable info to be authenticated
 //   false otherwise
-type Authenticator func( w http.ResponseWriter, r *http.Request ) bool
+type Authenticator func( *Request ) bool
+
+type Request struct {
+    Body   *http.Request
+    Writer http.ResponseWriter
+    Locale string
+}
 
 // HandlerFunc returns true when it handled the request and no other following handlers are needed
 //   returns false when it could not handle the request
-type HandlerFunc func( w http.ResponseWriter, r *http.Request ) bool
+type HandlerFunc func( *Request ) bool
 type Mux struct {
     parent  *Sprout
     handler HandlerFunc
@@ -35,7 +42,7 @@ const (
 func ( s *Sprout ) NewMux() *Mux {
     return &Mux{
         parent: s,
-        handler: func ( w http.ResponseWriter, r *http.Request ) bool {
+        handler: func ( _req *Request ) bool {
             return false
         },
     }
@@ -46,6 +53,7 @@ func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
 
     // Check Locale
     _lcc        := len( m.parent.localizer.locales )
+    _locale     := ""
     _get_locale := func () string {
         __cookie, __err := r.Cookie( cookie_locale )
         if __err != nil {
@@ -70,6 +78,7 @@ func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
     }
     _check_locale := func() {
         if _get_locale() == "" {
+            _locale = m.parent.default_locale
             _set_locale( m.parent.default_locale )
         }
     }
@@ -81,7 +90,7 @@ func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
             _parts := strings.SplitN( _url[1:], "/", 2 )
             if m.parent.localizer.hasLocale( _parts[0] ) {
                 // Set locale cookie to loccale
-                _locale    := _parts[0]
+                _locale = _parts[0]
                 if len( _parts ) > 1 {
                     r.URL.Path = "/" + _parts[1]
                 } else {
@@ -102,7 +111,13 @@ func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
         }
     }
 
-    m.handler( w, r )
+    _req := &Request{
+        Body: r,
+        Writer: w,
+        Locale: _locale,
+    }
+
+    m.handler( _req )
 }
 
 /*
@@ -123,9 +138,41 @@ func ( m *Mux ) Prepend( other *Mux ) {
 }
 */
 
-func NotFound( w http.ResponseWriter, r *http.Request ) bool {
-    WriteStatus( w, 404, "Not Found" )
+func NotFound( _req *Request ) bool {
+    WriteStatus( _req.Writer, 404, "Not Found" )
     return true
+}
+
+func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
+    return func( _req *Request ) bool {
+
+        if _t, _ok := sp.templates[_key]; _ok {
+
+            _bytes := &bytes.Buffer{}
+            _err   := _t.Execute( _bytes, _data_func() )
+            if _err != nil {
+                WriteStatus( _req.Writer, 500, "Internal Server Error" )
+                return true
+            }
+
+            _string, _err := sp.localizer.localize(
+                _bytes.String(),
+                _req.Locale,
+                default_localizer_threshold,
+            )
+            if _err != nil {
+                WriteStatus( _req.Writer, 500, "Internal Server Error" )
+                return true
+            }
+
+            _req.Writer.Header().Set( "Content-Type", "text/html; charset=utf-8" )
+            _req.Writer.Write( []byte( _string ) )
+
+            return true
+        }
+
+        return false
+    }
 }
 
 // Creates a symlink-like handler for target directory
@@ -143,8 +190,10 @@ func ( m *Mux ) WithSymlink( target, link string ) {
     target = path.Clean( target )
     link   = path.Clean( link )
 
-    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
+    m.WithHandlerFunc( func ( _req *Request ) bool {
 
+        w   := _req.Writer
+        r   := _req.Body
         url := r.URL.Path
         // Must not contain dotdot
         // Must have link as prefix
@@ -212,8 +261,10 @@ func ( m *Mux ) WithSymlink( target, link string ) {
 
 func ( m *Mux ) WithRealtimeAssetServer() {
 
-    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
+    m.WithHandlerFunc( func ( _req *Request ) bool {
 
+        w   := _req.Writer
+        r   := _req.Body
         url := r.URL.Path
         if isSafeAssetURL( url ) {
             // Remove the first slash at the beginning
@@ -281,8 +332,10 @@ func ( m *Mux ) WithRealtimeAssetServer() {
 
 func ( m *Mux ) WithCachedAssetServer() {
 
-    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
+    m.WithHandlerFunc( func ( _req *Request ) bool {
 
+        w   := _req.Writer
+        r   := _req.Body
         url := r.URL.Path
         if isSafeAssetURL( url ) {
             // Remove the first slash at the beginning
@@ -378,10 +431,10 @@ func makeMethodChecker( mflag int ) map[string] bool {
 func ( m *Mux ) WithRoute( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
 
     _flag := makeMethodChecker( mflag )
-    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
-        if _flag[r.Method] {
-            if rgx.MatchString( r.URL.Path ) {
-                hf( w, r )
+    m.WithHandlerFunc( func ( _req *Request ) bool {
+        if _flag[_req.Body.Method] {
+            if rgx.MatchString( _req.Body.URL.Path ) {
+                hf( _req )
                 return true
             }
         }
@@ -461,28 +514,11 @@ func ( m *Mux ) WithRoute2( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
 
 }*/
 
-func ( m *Mux ) WithTemplate( mflag int, rgx *regexp.Regexp, hf HandlerFunc ) {
-
-    _flag := makeMethodChecker( mflag )
-
-    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
-        if _flag[r.Method] {
-
-            __url := r.URL.Path
-            if rgx.MatchString( __url ) {
-                hf( w, r )
-                return true
-            }
-        }
-        return false
-    } )
-
-}
-
 func ( m *Mux ) WithAuthenticator( auther Authenticator, realm string ) {
 
-    m.WithHandlerFunc( func ( w http.ResponseWriter, r *http.Request ) bool {
-        if auther( w, r ) {
+    m.WithHandlerFunc( func ( _req *Request ) bool {
+        w := _req.Writer
+        if auther( _req ) {
             // returns false so that following handlers can handle the request
             return false
         }
@@ -496,8 +532,8 @@ func ( m *Mux ) WithAuthenticator( auther Authenticator, realm string ) {
 
 func ( m *Mux ) WithHandlerFunc( hf HandlerFunc ) {
     mh := m.handler
-    m.handler = func ( w http.ResponseWriter, r *http.Request ) bool {
-        if mh( w, r ) { return true }
-        return hf( w, r )
+    m.handler = func ( _req *Request ) bool {
+        if mh( _req ) { return true }
+        return hf( _req )
     }
 }

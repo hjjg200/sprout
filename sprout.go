@@ -114,7 +114,7 @@ func New() *Sprout {
         if _err != nil { log.Severeln( _err ) }
         log.Infoln( "Successfully built a cache:", _lcn )
     }
-    
+
     _err = s.LoadCache( _lcn )
     if _err != nil { log.Severeln( _err ) }
     log.Infoln( "Loaded Cache:", _lcn )
@@ -256,6 +256,14 @@ func WriteStatus( w http.ResponseWriter, code int, msg string ) {
 
 func WriteJSON( w io.Writer, v interface{} ) error {
     return json.NewEncoder( w ).Encode( v )
+}
+
+func GetLocale( _w http.ResponseWriter, _r *http.Request ) string {
+    _cookie, _err := _r.Cookie( cookie_locale )
+    if _err != nil {
+        return ""
+    }
+    return _cookie.Value
 }
 /*
 func ( s *Sprout ) AddRoute( rgxStr string, hh HTTPHandlerFunc ) error {

@@ -99,7 +99,8 @@ func ( s *Sprout ) LoadCache( fn string ) error {
     // Assign files
     for _, f := range zr.File {
 
-        fn := f.Name
+        fn   := f.Name
+        _ext := filepath.Ext( fn )
         // Continue if it is a directory
         if strings.HasSuffix( f.Name, "/" ) {
             continue
@@ -112,24 +113,30 @@ func ( s *Sprout ) LoadCache( fn string ) error {
         }
 
         switch {
-        case strings.HasPrefix( f.Name, envDirAsset ):
+        case strings.HasPrefix( fn, envDirAsset ):
             s.assets[fn] = makeAsset(
                 f.Modified, frc,
             )
-        case strings.HasPrefix( f.Name, envDirLocale ):
+        case strings.HasPrefix( fn, envDirLocale ):
+            if _ext != ".json" {
+                continue
+            }
             _buf := bytes.Buffer{}
             _buf.ReadFrom( frc )
-            _base   := filepath.Base( f.Name )
+            _base   := filepath.Base( fn )
             _ext    := filepath.Ext( _base )
             _locale := _base[:len( _base ) - len( _ext )]
             s.localizer.appendLocale( _locale, _buf.Bytes() )
-        case strings.HasPrefix( f.Name, envDirTemplate ):
+        case strings.HasPrefix( fn, envDirTemplate ):
+            if !string_slice_includes( template_extensions, _ext ) {
+                continue
+            }
             _buf := bytes.Buffer{}
             _buf.ReadFrom( frc )
-            s.templates[f.Name] = template.Must( template.New( f.Name ).Parse( _buf.String() ) )
+            s.templates[fn] = template.Must( template.New( fn ).Parse( _buf.String() ) )
             if _err != nil {
                 // Delete failed ones
-                delete( s.templates, f.Name )
+                delete( s.templates, fn )
             }
         }
 
@@ -247,7 +254,7 @@ func ( s *Sprout ) BuildCache() ( string, error ) {
     if err != nil {
         return "", err
     }
-    
+
     _dirs_to_cache := []string{
         envDirAsset, envDirTemplate, envDirLocale,
     }

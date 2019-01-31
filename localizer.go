@@ -128,7 +128,7 @@ func ( lc *localizer ) appendLocale( _locale string, _json []byte ) error {
     if _, _ok := lc.locales[_locale]; !_ok {
         lc.locales[_locale] = make( map[string] string )
     }
-    
+
     for _k, _v := range _locale_map {
         lc.locales[_locale][_k] = _v
     }
