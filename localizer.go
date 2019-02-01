@@ -2,6 +2,8 @@ package sprout
 
 import (
     "encoding/json"
+    "io"
+    "io/ioutil"
     "reflect"
     "strings"
 )
@@ -140,6 +142,22 @@ func ( lc *localizer ) appendLocale( _locale string, _json []byte ) error {
 func ( lc *localizer ) hasLocale( locale string ) bool {
     _, ok := lc.locales[locale]
     return ok
+}
+
+func ( lc *localizer ) localize_reader( _r io.Reader, locale string, threshold int ) ( io.Reader, error ) {
+
+    _bytes, _err := ioutil.ReadAll( _r )
+    if _err != nil {
+        return _r, _err
+    }
+
+    _string, _err := lc.localize( string( _bytes ), locale, threshold )
+    if _err != nil {
+        return _r, _err
+    }
+
+    return strings.NewReader( _string ), nil
+
 }
 
 func ( lc *localizer ) localize( src string, locale string, threshold int ) ( string, error ) {

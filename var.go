@@ -12,7 +12,7 @@ const (
 
 var (
     defaultWhitelistedExtensions = []string{
-        ".css", ".js", ".jpg", ".jpeg", ".png", ".gif", ".ico", ".icn",
+        ".css", ".js", ".jpg", ".jpeg", ".png", ".gif", ".ico", ".icn", ".html", ".htm",
     }
     template_extensions = []string{
         ".html", ".htm",

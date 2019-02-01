@@ -2,6 +2,7 @@ package sprout
 
 import (
     "bytes"
+    "io"
     "net/http"
     "regexp"
     "strings"
@@ -143,6 +144,65 @@ func NotFound( _req *Request ) bool {
     return true
 }
 
+func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
+    return func( _req *Request ) bool {
+
+        w   := _req.Writer
+        r   := _req.Body
+        p   := _key
+        b   := path.Base( p )
+        ext := path.Ext( b )
+        url := r.URL.Path
+
+        // Whitelist of Asset Extensions
+        //   This is temporary security measure
+        //   Liable to being removed or modified
+        if !string_slice_includes( sp.whitelistedExtensions, ext ) {
+            // Status Not Found
+            WriteStatus( w, 404, "Not Found" )
+            return true
+        }
+
+        a, ok := sp.assets[p]
+        if ok {
+            // Check if Version Is Set
+            v := r.FormValue( "v" )
+            if v == "" || v != a.hash[:6] {
+                http.Redirect(
+                    w, r, url + "?v=" + a.hash[:6],
+                    http.StatusFound,
+                )
+                return true
+            }
+
+            // Localize the content
+            _lc_reader, _err := sp.localizer.localize_reader(
+                a.reader,
+                _req.Locale,
+                default_localizer_threshold,
+            )
+            if _err != nil {
+                WriteStatus( w, 500, "Internal Server Error" )
+                return true
+            }
+
+            _, _ok := _lc_reader.( io.ReadSeeker )
+            if !_ok {
+                WriteStatus( w, 500, "Internal Server Error" )
+                return true
+            }
+
+            // Serve Content is the Version Is Set
+            http.ServeContent( w, r, b, a.modTime, _lc_reader.( io.ReadSeeker ) )
+        } else {
+            // Status Not Found
+            WriteStatus( w, 404, "Not Found" )
+        }
+        return true
+
+    }
+}
+
 func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
     return func( _req *Request ) bool {
 
@@ -155,8 +215,8 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
                 return true
             }
 
-            _string, _err := sp.localizer.localize(
-                _bytes.String(),
+            _lc_reader, _err := sp.localizer.localize_reader(
+                _bytes,
                 _req.Locale,
                 default_localizer_threshold,
             )
@@ -166,12 +226,14 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
             }
 
             _req.Writer.Header().Set( "Content-Type", "text/html; charset=utf-8" )
-            _req.Writer.Write( []byte( _string ) )
+            io.Copy( _req.Writer, _lc_reader )
 
             return true
         }
 
-        return false
+        // Status Not Found
+        WriteStatus( _req.Writer, 404, "Not Found" )
+        return true
     }
 }
 

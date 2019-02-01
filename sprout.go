@@ -258,13 +258,6 @@ func WriteJSON( w io.Writer, v interface{} ) error {
     return json.NewEncoder( w ).Encode( v )
 }
 
-func GetLocale( _w http.ResponseWriter, _r *http.Request ) string {
-    _cookie, _err := _r.Cookie( cookie_locale )
-    if _err != nil {
-        return ""
-    }
-    return _cookie.Value
-}
 /*
 func ( s *Sprout ) AddRoute( rgxStr string, hh HTTPHandlerFunc ) error {
 
