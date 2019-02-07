@@ -167,11 +167,26 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
 
         a, ok := sp.assets[p]
         if ok {
-            // Check if Version Is Set
-            v := r.FormValue( "v" )
-            if v == "" || v != a.hash[:6] {
+
+            // Verify the form values of the given keys in the map
+            _to_verify    := make( map[string] string )
+            _verified_url := url
+
+            _to_verify["v"] = a.hash[:6]
+
+            // check locale if there are more than 1 locale
+            if len( sp.localizer.locales ) > 1 {
+                _to_verify["l"] = _req.Locale
+            }
+
+            for _key, _value := range _to_verify {
+                _fv := r.FormValue( _key )
+
+            }
+
+            if v == "" || v != a.hash[:6] || l != _req.Locale {
                 http.Redirect(
-                    w, r, url + "?v=" + a.hash[:6] + "?l=" + _req.Locale,
+                    w, r, url + "?v=" + a.hash[:6] + "&l=" + _req.Locale,
                     http.StatusFound,
                 )
                 return true
