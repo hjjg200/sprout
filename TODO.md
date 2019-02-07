@@ -1,8 +1,6 @@
 # TODO
 
 1. Use filepath.Walk for archiving and processing assets
-1. Properly implement httphandler.go in an intuitive way
-    - Put methods like context.Background()
-    - Method handling ^.+/index.html?$
 1. CachedRoute RealtimeRoute, template
-1. ServeCachedAsset, ...
+1. Option to view directory in WithSymlink
+1. Cache localized output of cached assets
