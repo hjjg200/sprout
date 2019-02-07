@@ -171,7 +171,7 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
             v := r.FormValue( "v" )
             if v == "" || v != a.hash[:6] {
                 http.Redirect(
-                    w, r, url + "?v=" + a.hash[:6],
+                    w, r, url + "?v=" + a.hash[:6] + "?l=" + _req.Locale,
                     http.StatusFound,
                 )
                 return true
