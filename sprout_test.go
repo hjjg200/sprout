@@ -43,7 +43,7 @@ func TestSprout( t *testing.T ) {
     }
     prod.Mux().WithRoute(
         MethodGet, regexp.MustCompile( "^/(index.html?)?$" ),
-        s.ServeCachedTemplate( "template/index.html", df ),
+        s.ServeRealtimeTemplate( "template/index.html", df ),
     )
     prod.Mux().WithRoute(
         MethodGet, regexp.MustCompile( "^/hello$" ),

@@ -6,6 +6,7 @@ import (
     "net/http"
     "regexp"
     "strings"
+    "text/template"
     "path"
     "os"
 )
@@ -292,7 +293,72 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
 
 func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
     return func( _req *Request ) bool {
+
+        w   := _req.Writer
+      //r   := _req.Body
+        p   := _key
+        b   := path.Base( p )
+        ext := strings.ToLower( path.Ext( p ) )
+
+        // Template Whitelists
+        if !string_slice_includes( template_extensions, ext ) {
+            // Status Not Found
+            WriteStatus( w, 404, "Not Found" )
+            return true
+        }
+
+        st, err := os.Stat( p )
+        // Not found in the template folder
+        if os.IsNotExist( err ) {
+            WriteStatus( w, 404, "Not Found" )
+            return true
+        }
+        if err != nil || st.IsDir() {
+            // Status Internal Server Error
+            WriteStatus( w, 500, "Internal Server Error" )
+            return true
+        }
+
+        f, err := os.Open( p )
+        if err != nil {
+            // Status Internal Server Error
+            WriteStatus( w, 500, "Internal Server Error" )
+            return true
+        }
+
+        _buf := &bytes.Buffer{}
+        _buf.ReadFrom( f )
+        _err := f.Close()
+        if err != nil {
+            // Status Internal Server Error
+            WriteStatus( w, 500, "Internal Server Error" )
+            return true
+        }
+
+        // Executing the Template
+        _template := template.Must( template.New( b ).Parse( _buf.String() ) )
+        _buf.Truncate( 0 )
+        _err = _template.Execute( _buf, _data_func() )
+        if _err != nil {
+            WriteStatus( _req.Writer, 500, "Internal Server Error" )
+            return true
+        }
+
+        _lc_reader, _err := sp.localizer.localize_reader(
+            _buf,
+            _req.Locale,
+            default_localizer_threshold,
+        )
+        if _err != nil {
+            WriteStatus( _req.Writer, 500, "Internal Server Error" )
+            return true
+        }
+
+        _req.Writer.Header().Set( "Content-Type", "text/html; charset=utf-8" )
+        io.Copy( _req.Writer, _lc_reader )
+
         return true
+
     }
 }
 
@@ -384,10 +450,13 @@ func ( m *Mux ) WithRealtimeAssetServer() {
 
     m.WithHandlerFunc( func ( _req *Request ) bool {
 
-        w   := _req.Writer
+      //w   := _req.Writer
         r   := _req.Body
         url := r.URL.Path
         if isSafeAssetURL( url ) {
+            p := path.Clean( url[1:] )
+            return m.parent.ServeRealtimeAsset( p )( _req )
+            /*
             // Remove the first slash at the beginning
             p   := path.Clean( url[1:] )
             b   := path.Base( p )
@@ -442,6 +511,7 @@ func ( m *Mux ) WithRealtimeAssetServer() {
             http.ServeContent( w, r, b, st.ModTime(), f )
             f.Close()
             return true
+            */
 
         }
 
@@ -455,10 +525,14 @@ func ( m *Mux ) WithCachedAssetServer() {
 
     m.WithHandlerFunc( func ( _req *Request ) bool {
 
-        w   := _req.Writer
+      //w   := _req.Writer
         r   := _req.Body
         url := r.URL.Path
         if isSafeAssetURL( url ) {
+            p := path.Clean( url[1:] )
+            return m.parent.ServeCachedAsset( p )( _req )
+
+            /*
             // Remove the first slash at the beginning
             p   := path.Clean( url[1:] )
             b   := path.Base( p )
@@ -496,6 +570,8 @@ func ( m *Mux ) WithCachedAssetServer() {
                 WriteStatus( w, 404, "Not Found" )
             }
             return true
+            */
+
         }
 
         return false
