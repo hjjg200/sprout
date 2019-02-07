@@ -209,7 +209,12 @@ func ( s *Sprout ) BuildCache() ( string, error ) {
         }
 
         // Create Node in the Zip
-        w, err3 := zw.Create( path )
+        fh, err3 := zip.FileInfoHeader( st )
+        fh.Name = path
+        if err3 != nil {
+            return err3
+        }
+        w, err3 := zw.CreateHeader( fh )
         if err3 != nil {
             return err3
         }

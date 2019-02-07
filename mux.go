@@ -78,7 +78,8 @@ func ( m *Mux ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
         http.SetCookie( w, __cookie )
     }
     _check_locale := func() {
-        if _get_locale() == "" {
+        _locale = _get_locale()
+        if _locale == "" {
             _locale = m.parent.default_locale
             _set_locale( m.parent.default_locale )
         }
@@ -176,8 +177,8 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
             }
 
             // Localize the content
-            _lc_reader, _err := sp.localizer.localize_reader(
-                a.reader,
+            _lc_string, _err := sp.localizer.localize(
+                string( a.data ),
                 _req.Locale,
                 default_localizer_threshold,
             )
@@ -186,18 +187,70 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
                 return true
             }
 
-            _, _ok := _lc_reader.( io.ReadSeeker )
-            if !_ok {
-                WriteStatus( w, 500, "Internal Server Error" )
-                return true
-            }
+            _lc_rs := strings.NewReader( _lc_string )
 
             // Serve Content is the Version Is Set
-            http.ServeContent( w, r, b, a.modTime, _lc_reader.( io.ReadSeeker ) )
+            http.ServeContent( w, r, b, a.modTime, _lc_rs )
         } else {
             // Status Not Found
             WriteStatus( w, 404, "Not Found" )
         }
+        return true
+
+    }
+}
+
+func ( sp *Sprout ) ServeRealtimeAsset( _key string ) HandlerFunc {
+    return func( _req *Request ) bool {
+
+        w   := _req.Writer
+        r   := _req.Body
+        p   := _key
+        b   := path.Base( p )
+        ext := strings.ToLower( path.Ext( p ) )
+
+        // Whitelist of Asset Extensions
+        //   This is temporary security measure
+
+        if !string_slice_includes( sp.whitelistedExtensions, ext ) {
+            // Status Not Found
+            WriteStatus( w, 404, "Not Found" )
+            return true
+        }
+
+        st, err := os.Stat( p )
+        // Not found in the asset folder
+        if os.IsNotExist( err ) {
+            WriteStatus( w, 404, "Not Found" )
+            return true
+        }
+        if err != nil {
+            // Status Internal Server Error
+            WriteStatus( w, 500, "Internal Server Error" )
+            return true
+        }
+        if st.IsDir() {
+            WriteStatus( w, 403, "Forbidden" )
+            return true
+        }
+
+        // Process the asset
+        err = sp.ProcessAsset( p )
+        if err != nil {
+            panic( err )
+            WriteStatus( w, 500, "Internal Server Error" )
+            return true
+        }
+
+        f, err := os.Open( p )
+        if err != nil {
+            // Status Internal Server Error
+            WriteStatus( w, 500, "Internal Server Error" )
+            return true
+        }
+
+        http.ServeContent( w, r, b, st.ModTime(), f )
+        f.Close()
         return true
 
     }
@@ -233,6 +286,12 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
 
         // Status Not Found
         WriteStatus( _req.Writer, 404, "Not Found" )
+        return true
+    }
+}
+
+func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
+    return func( _req *Request ) bool {
         return true
     }
 }
@@ -428,8 +487,10 @@ func ( m *Mux ) WithCachedAssetServer() {
                     return true
                 }
 
+                _rs := strings.NewReader( string( a.data ) )
+
                 // Serve Content is the Version Is Set
-                http.ServeContent( w, r, b, a.modTime, a.reader )
+                http.ServeContent( w, r, b, a.modTime, _rs )
             } else {
                 // Status Not Found
                 WriteStatus( w, 404, "Not Found" )

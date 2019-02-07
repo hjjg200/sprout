@@ -53,7 +53,7 @@ var (
 
 type asset struct {
     modTime time.Time
-    reader  *bytes.Reader
+    data    []byte
 
     // sha256 hash of the file
     hash    string
@@ -67,7 +67,7 @@ func makeAsset( mt time.Time, r io.Reader ) asset {
     io.Copy( buf, r )
     return asset{
         modTime: mt,
-        reader: bytes.NewReader( buf.Bytes() ),
+        data: buf.Bytes(),
         hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
     }
 }
