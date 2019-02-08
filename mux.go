@@ -4,9 +4,10 @@ import (
     "bytes"
     "io"
     "net/http"
+    "net/url"
     "regexp"
     "strings"
-    "text/template"
+    "html/template"
     "path"
     "os"
 )
@@ -149,12 +150,12 @@ func NotFound( _req *Request ) bool {
 func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
     return func( _req *Request ) bool {
 
-        w   := _req.Writer
-        r   := _req.Body
-        p   := _key
-        b   := path.Base( p )
-        ext := path.Ext( b )
-        url := r.URL.Path
+        w    := _req.Writer
+        r    := _req.Body
+        p    := _key
+        b    := path.Base( p )
+        ext  := path.Ext( b )
+        _url := r.URL.Path
 
         // Whitelist of Asset Extensions
         //   This is temporary security measure
@@ -169,24 +170,30 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
         if ok {
 
             // Verify the form values of the given keys in the map
-            _to_verify    := make( map[string] string )
-            _verified_url := url
+            _to_verify       := url.Values{}
+            _should_redirect := false
 
-            _to_verify["v"] = a.hash[:6]
-
-            // check locale if there are more than 1 locale
+            // Add list to verify
+                // Version
+            _to_verify.Add( "v", a.hash[:6] )
+                // check locale if there are more than 1 locale
             if len( sp.localizer.locales ) > 1 {
-                _to_verify["l"] = _req.Locale
+                _to_verify.Add( "l", _req.Locale )
             }
 
-            for _key, _value := range _to_verify {
-                _fv := r.FormValue( _key )
-
+            for _key := range _to_verify {
+                _fv    := r.FormValue( _key )
+                _value := _to_verify.Get( _key )
+                if _fv == "" || _fv != _value {
+                    _should_redirect = true
+                    break
+                }
             }
 
-            if v == "" || v != a.hash[:6] || l != _req.Locale {
+            // Redirect if the given values are out-dated
+            if _should_redirect {
                 http.Redirect(
-                    w, r, url + "?v=" + a.hash[:6] + "&l=" + _req.Locale,
+                    w, r, _url + "?" + _to_verify.Encode(),
                     http.StatusFound,
                 )
                 return true
@@ -311,6 +318,7 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
 
         w   := _req.Writer
       //r   := _req.Body
+        /*
         p   := _key
         b   := path.Base( p )
         ext := strings.ToLower( path.Ext( p ) )
@@ -352,6 +360,12 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
 
         // Executing the Template
         _template := template.Must( template.New( b ).Parse( _buf.String() ) )
+        */
+        _template, _err := realtime_template( _key )
+        if _err != nil {
+            // return true since the function above writes the status
+            return true
+        }
         _buf.Truncate( 0 )
         _err = _template.Execute( _buf, _data_func() )
         if _err != nil {
@@ -375,6 +389,79 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
         return true
 
     }
+}
+
+var (
+    ErrTemplateNotFound = errors.New( "sprout: the template was not found" )
+    ErrTemplateInvalid  = errors.New( "sprout: the given template is invalid" )
+    ErrTemplateFailure  = errors.New( "sprout: failed to read the given template" )
+)
+
+func realtime_template( _path string ) ( *template.Template, error ) {
+
+    p   := _path
+    b   := path.Base( p )
+    ext := strings.ToLower( path.Ext( p ) )
+
+    if !string_slice_includes( template_extensions, ext ) {
+        // Status Not Found
+        WriteStatus( w, 404, "Not Found" )
+        return nil, ErrTemplateNotFound
+    }
+
+    st, err := os.Stat( p )
+    // Not found in the template folder
+    if os.IsNotExist( err ) {
+        WriteStatus( w, 404, "Not Found" )
+        return nil, ErrTemplateNotFound
+    }
+    if err != nil || st.IsDir() {
+        // Status Internal Server Error
+        WriteStatus( w, 500, "Internal Server Error" )
+        return nil, ErrTemplateInvalid
+    }
+
+    f, err := os.Open( p )
+    if err != nil {
+        // Status Internal Server Error
+        WriteStatus( w, 500, "Internal Server Error" )
+        return nil, ErrTemplateInvalid
+    }
+
+    _buf := &bytes.Buffer{}
+    _buf.ReadFrom( f )
+    _err := f.Close()
+    if err != nil {
+        // Status Internal Server Error
+        WriteStatus( w, 500, "Internal Server Error" )
+        return nil, ErrTemplateFailure
+    }
+
+    // Realtime templates must have a unique name so that it won't overwrite the cached templates
+    _hash := sha256.New()
+    _hash.Write( _buf.Bytes() )
+    _name := fmt.Sprintf( "%x", _hash.Sum( nil ) )
+
+    // Assign
+    _tempalte := template.New( _name )
+    _func_map := tempalte.FuncMap{
+        "template": realtime_template_func,
+    }
+
+    // Executing the Template
+    return template.Must( template.New( _name ).Parse( _buf.String() ) ), nil
+
+}
+
+func realtime_template_func( _path string, _pipeline reflect.Value ) ( string, error ) {
+
+    _template, _err := realtime_template( _path )
+    if _err != nil {
+        return "", _err
+    }
+
+
+
 }
 
 // Creates a symlink-like handler for target directory
