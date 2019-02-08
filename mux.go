@@ -2,6 +2,9 @@ package sprout
 
 import (
     "bytes"
+    "crypto/sha256"
+    "errors"
+    "fmt"
     "io"
     "net/http"
     "net/url"
@@ -143,7 +146,7 @@ func ( m *Mux ) Prepend( other *Mux ) {
 */
 
 func NotFound( _req *Request ) bool {
-    WriteStatus( _req.Writer, 404, "Not Found" )
+    WriteStatus( _req, 404, "Not Found" )
     return true
 }
 
@@ -162,7 +165,7 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
         //   Liable to being removed or modified
         if !string_slice_includes( sp.whitelistedExtensions, ext ) {
             // Status Not Found
-            WriteStatus( w, 404, "Not Found" )
+            WriteStatus( _req, 404, "Not Found" )
             return true
         }
 
@@ -206,7 +209,7 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
                 default_localizer_threshold,
             )
             if _err != nil {
-                WriteStatus( w, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
@@ -216,7 +219,7 @@ func ( sp *Sprout ) ServeCachedAsset( _key string ) HandlerFunc {
             http.ServeContent( w, r, b, a.modTime, _lc_rs )
         } else {
             // Status Not Found
-            WriteStatus( w, 404, "Not Found" )
+            WriteStatus( _req, 404, "Not Found" )
         }
         return true
 
@@ -237,23 +240,23 @@ func ( sp *Sprout ) ServeRealtimeAsset( _key string ) HandlerFunc {
 
         if !string_slice_includes( sp.whitelistedExtensions, ext ) {
             // Status Not Found
-            WriteStatus( w, 404, "Not Found" )
+            WriteStatus( _req, 404, "Not Found" )
             return true
         }
 
         st, err := os.Stat( p )
         // Not found in the asset folder
         if os.IsNotExist( err ) {
-            WriteStatus( w, 404, "Not Found" )
+            WriteStatus( _req, 404, "Not Found" )
             return true
         }
         if err != nil {
             // Status Internal Server Error
-            WriteStatus( w, 500, "Internal Server Error" )
+            WriteStatus( _req, 500, "Internal Server Error" )
             return true
         }
         if st.IsDir() {
-            WriteStatus( w, 403, "Forbidden" )
+            WriteStatus( _req, 403, "Forbidden" )
             return true
         }
 
@@ -261,14 +264,14 @@ func ( sp *Sprout ) ServeRealtimeAsset( _key string ) HandlerFunc {
         err = sp.ProcessAsset( p )
         if err != nil {
             panic( err )
-            WriteStatus( w, 500, "Internal Server Error" )
+            WriteStatus( _req, 500, "Internal Server Error" )
             return true
         }
 
         f, err := os.Open( p )
         if err != nil {
             // Status Internal Server Error
-            WriteStatus( w, 500, "Internal Server Error" )
+            WriteStatus( _req, 500, "Internal Server Error" )
             return true
         }
 
@@ -287,7 +290,7 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
             _bytes := &bytes.Buffer{}
             _err   := _t.Execute( _bytes, _data_func() )
             if _err != nil {
-                WriteStatus( _req.Writer, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
@@ -297,7 +300,7 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
                 default_localizer_threshold,
             )
             if _err != nil {
-                WriteStatus( _req.Writer, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
@@ -308,7 +311,7 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
         }
 
         // Status Not Found
-        WriteStatus( _req.Writer, 404, "Not Found" )
+        WriteStatus( _req, 404, "Not Found" )
         return true
     }
 }
@@ -316,7 +319,7 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
 func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
     return func( _req *Request ) bool {
 
-        w   := _req.Writer
+      //w   := _req.Writer
       //r   := _req.Body
         /*
         p   := _key
@@ -326,26 +329,26 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
         // Template Whitelists
         if !string_slice_includes( template_extensions, ext ) {
             // Status Not Found
-            WriteStatus( w, 404, "Not Found" )
+            WriteStatus( _req, 404, "Not Found" )
             return true
         }
 
         st, err := os.Stat( p )
         // Not found in the template folder
         if os.IsNotExist( err ) {
-            WriteStatus( w, 404, "Not Found" )
+            WriteStatus( _req, 404, "Not Found" )
             return true
         }
         if err != nil || st.IsDir() {
             // Status Internal Server Error
-            WriteStatus( w, 500, "Internal Server Error" )
+            WriteStatus( _req, 500, "Internal Server Error" )
             return true
         }
 
         f, err := os.Open( p )
         if err != nil {
             // Status Internal Server Error
-            WriteStatus( w, 500, "Internal Server Error" )
+            WriteStatus( _req, 500, "Internal Server Error" )
             return true
         }
 
@@ -354,7 +357,7 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
         _err := f.Close()
         if err != nil {
             // Status Internal Server Error
-            WriteStatus( w, 500, "Internal Server Error" )
+            WriteStatus( _req, 500, "Internal Server Error" )
             return true
         }
 
@@ -364,12 +367,15 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
         _template, _err := realtime_template( _key )
         if _err != nil {
             // return true since the function above writes the status
+            WriteError( _req, _err )
             return true
         }
-        _buf.Truncate( 0 )
-        _err = _template.Execute( _buf, _data_func() )
+        _buf := bytes.NewBuffer( nil )
+        _err  = _template.Execute( _buf, _data_func() )
         if _err != nil {
-            WriteStatus( _req.Writer, 500, "Internal Server Error" )
+            WriteError( _req, Error{
+                500, "Internal Server Error", _err,
+            } )
             return true
         }
 
@@ -379,7 +385,9 @@ func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interf
             default_localizer_threshold,
         )
         if _err != nil {
-            WriteStatus( _req.Writer, 500, "Internal Server Error" )
+            WriteError( _req, Error{
+                500, "Internal Server Error", _err,
+            } )
             return true
         }
 
@@ -400,41 +408,45 @@ var (
 func realtime_template( _path string ) ( *template.Template, error ) {
 
     p   := _path
-    b   := path.Base( p )
     ext := strings.ToLower( path.Ext( p ) )
 
     if !string_slice_includes( template_extensions, ext ) {
         // Status Not Found
-        WriteStatus( w, 404, "Not Found" )
-        return nil, ErrTemplateNotFound
+        return nil, Error{
+            404, "Not Found", ErrTemplateNotFound,
+        }
     }
 
     st, err := os.Stat( p )
     // Not found in the template folder
     if os.IsNotExist( err ) {
-        WriteStatus( w, 404, "Not Found" )
-        return nil, ErrTemplateNotFound
+        return nil, Error{
+            404, "Not Found", ErrTemplateNotFound,
+        }
     }
     if err != nil || st.IsDir() {
         // Status Internal Server Error
-        WriteStatus( w, 500, "Internal Server Error" )
-        return nil, ErrTemplateInvalid
+        return nil, Error{
+            500, "Internal Server Error", ErrTemplateInvalid,
+        }
     }
 
     f, err := os.Open( p )
     if err != nil {
         // Status Internal Server Error
-        WriteStatus( w, 500, "Internal Server Error" )
-        return nil, ErrTemplateInvalid
+        return nil, Error{
+            500, "Internal Server Error", ErrTemplateInvalid,
+        }
     }
 
     _buf := &bytes.Buffer{}
     _buf.ReadFrom( f )
     _err := f.Close()
-    if err != nil {
+    if _err != nil {
         // Status Internal Server Error
-        WriteStatus( w, 500, "Internal Server Error" )
-        return nil, ErrTemplateFailure
+        return nil, Error{
+            500, "Internal Server Error", ErrTemplateFailure,
+        }
     }
 
     // Realtime templates must have a unique name so that it won't overwrite the cached templates
@@ -443,24 +455,34 @@ func realtime_template( _path string ) ( *template.Template, error ) {
     _name := fmt.Sprintf( "%x", _hash.Sum( nil ) )
 
     // Assign
-    _tempalte := template.New( _name )
-    _func_map := tempalte.FuncMap{
+    _template := template.New( _name )
+    _func_map := template.FuncMap{
         "template": realtime_template_func,
     }
+    _template.Funcs( _func_map )
+    _template = template.Must( _template.Parse( _buf.String() ) )
 
     // Executing the Template
-    return template.Must( template.New( _name ).Parse( _buf.String() ) ), nil
+    return _template, nil
 
 }
 
-func realtime_template_func( _path string, _pipeline reflect.Value ) ( string, error ) {
+func realtime_template_func( _path string, _pipeline ...string ) ( *template.Template, error ) {
 
     _template, _err := realtime_template( _path )
     if _err != nil {
-        return "", _err
+        return nil, _err
     }
 
+    _tmp_string := fmt.Sprintf(
+        "{{ template \"%s\" %s }}",
+        _template.Tree.Name,
+        strings.Join( _pipeline, " " ),
+    )
 
+    _template = template.Must( _template.Parse( _tmp_string  ) )
+
+    return _template, nil
 
 }
 
@@ -504,27 +526,27 @@ func ( m *Mux ) WithSymlink( target, link string ) {
             st, err := os.Stat( p )
             // Not found
             if os.IsNotExist( err ) {
-                WriteStatus( w, 404, "Not Found" )
+                WriteStatus( _req, 404, "Not Found" )
                 return true
             }
             // Other errors
             if err != nil {
                 // Status Internal Server Error
-                WriteStatus( w, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
             // When it's a directory
             // Later handle this with some option like: forbidDirectoryAccess
             if st.IsDir() {
-                WriteStatus( w, 403, "Forbidden" )
+                WriteStatus( _req, 403, "Forbidden" )
                 return true
             }
 
             f, err := os.Open( p )
             if err != nil {
                 // Status Internal Server Error
-                WriteStatus( w, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
@@ -575,23 +597,23 @@ func ( m *Mux ) WithRealtimeAssetServer() {
             }
             if !found {
                 // Status Not Found
-                WriteStatus( w, 404, "Not Found" )
+                WriteStatus( _req, 404, "Not Found" )
                 return true
             }
 
             st, err := os.Stat( p )
             // Not found in the asset folder
             if os.IsNotExist( err ) {
-                WriteStatus( w, 404, "Not Found" )
+                WriteStatus( _req, 404, "Not Found" )
                 return true
             }
             if err != nil {
                 // Status Internal Server Error
-                WriteStatus( w, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
             if st.IsDir() {
-                WriteStatus( w, 403, "Forbidden" )
+                WriteStatus( _req, 403, "Forbidden" )
                 return true
             }
 
@@ -599,14 +621,14 @@ func ( m *Mux ) WithRealtimeAssetServer() {
             err = m.parent.ProcessAsset( p )
             if err != nil {
                 panic( err )
-                WriteStatus( w, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
             f, err := os.Open( p )
             if err != nil {
                 // Status Internal Server Error
-                WriteStatus( w, 500, "Internal Server Error" )
+                WriteStatus( _req, 500, "Internal Server Error" )
                 return true
             }
 
@@ -647,7 +669,7 @@ func ( m *Mux ) WithCachedAssetServer() {
             case ".css", ".js":
             default:
                 // Status Not Found
-                WriteStatus( w, 404, "Not Found" )
+                WriteStatus( _req, 404, "Not Found" )
                 return true
             }
 
@@ -669,7 +691,7 @@ func ( m *Mux ) WithCachedAssetServer() {
                 http.ServeContent( w, r, b, a.modTime, _rs )
             } else {
                 // Status Not Found
-                WriteStatus( w, 404, "Not Found" )
+                WriteStatus( _req, 404, "Not Found" )
             }
             return true
             */
@@ -824,7 +846,7 @@ func ( m *Mux ) WithAuthenticator( auther Authenticator, realm string ) {
             return false
         }
         w.Header().Set( "WWW-Authenticate", "Basic realm=\"" + realm + "\"" )
-        WriteStatus( w, 401, "Unauthorized" )
+        WriteStatus( _req, 401, "Unauthorized" )
         // returns true since this is the last stop the request will reach
         return true
     } )

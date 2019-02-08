@@ -7,7 +7,6 @@ import (
     "errors"
     "fmt"
     "io"
-    "net/http"
     "os"
     "path/filepath"
     "strconv"
@@ -204,9 +203,32 @@ func FetchSession( w http.ResponseWriter, r *http.Request ) ( *session.Session, 
     return session.Fetch( w, r )
 }
 */
-func WriteStatus( w http.ResponseWriter, code int, msg string ) {
-    w.Header().Set( "Content-Type", "text/html" )
-    c := fmt.Sprint( code )
+
+    // Changing the order might cause security issues
+type Error struct {
+    code   int
+    title  string
+    detail error
+}
+
+func ( _err Error ) Error() string {
+    return fmt.Sprintf( "%d %s", _err.code, _err.title )
+}
+
+func WriteError( _req *Request, _err error ) {
+
+    _req.Writer.Header().Set( "Content-Type", "text/html" )
+    var c, msg string
+
+    if _sp_err, _ok := _err.( Error ); _ok {
+        c   = fmt.Sprint( _sp_err.code )
+        msg = _sp_err.title
+        log.Infoln( _sp_err.detail )
+    } else {
+        c   = "500"
+        msg = "Internal Server Error"
+    }
+
     t := `<!doctype html>
 <html>
     <head>
@@ -251,7 +273,20 @@ func WriteStatus( w http.ResponseWriter, code int, msg string ) {
         </div>
     </body>
 </html>`
-    w.Write( []byte( t ) )
+    _req.Writer.Write( []byte( t ) )
+
+}
+
+func WriteStatus( _req *Request, code int, msg string ) {
+
+    _err := Error{
+        code: code,
+        title: msg,
+        detail: nil,
+    }
+
+    WriteError( _req, _err )
+
 }
 
 func WriteJSON( w io.Writer, v interface{} ) error {
