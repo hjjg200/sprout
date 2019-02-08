@@ -12,7 +12,7 @@ import (
     "path/filepath"
     "sort"
     "strings"
-    "text/template"
+    "html/template"
     "time"
 
     "github.com/hjjg200/go/together"
@@ -133,7 +133,12 @@ func ( s *Sprout ) LoadCache( fn string ) error {
             }
             _buf := bytes.Buffer{}
             _buf.ReadFrom( frc )
-            s.templates[fn] = template.Must( template.New( fn ).Parse( _buf.String() ) )
+            s.templates[fn] = template.Must(
+                template
+                    .New( fn )
+                    .Delims( template_left_delimiter, template_right_delimiter )
+                    .Parse( _buf.String() )
+            )
             if _err != nil {
                 // Delete failed ones
                 delete( s.templates, fn )

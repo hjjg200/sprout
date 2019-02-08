@@ -8,6 +8,9 @@ const (
     default_localizer_threshold = 5
 
     cookie_locale = "locale"
+    
+    template_left_delimiter  = "{{"
+    template_right_delimiter = "}}"
 )
 
 var (
