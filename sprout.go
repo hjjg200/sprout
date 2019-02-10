@@ -10,7 +10,7 @@ import (
     "os"
     "path/filepath"
     "strconv"
-    "text/template"
+    "html/template"
     "time"
 
     "./log"
@@ -23,7 +23,7 @@ import (
 
 const (
     envAppName = "sprout"
-    envVersion = "pre-alpha 0.4"
+    envVersion = "pre-alpha 0.5"
 
     // Directory names must not contain slashes, dots, etc.
     envDirAsset    = "asset"
@@ -74,7 +74,7 @@ func makeAsset( mt time.Time, r io.Reader ) asset {
 type Sprout struct {
     cwd       string
     assets    map[string] asset
-    templates map[string] *template.Template
+    templates *template.Template
     servers   map[string] *Server
     localizer *localizer
     default_locale string
@@ -223,7 +223,10 @@ func WriteError( _req *Request, _err error ) {
     if _sp_err, _ok := _err.( Error ); _ok {
         c   = fmt.Sprint( _sp_err.code )
         msg = _sp_err.title
-        log.Infoln( _sp_err.detail )
+        
+        if _sp_err.detail != nil {
+            log.Warnln( _sp_err.detail )
+        }
     } else {
         c   = "500"
         msg = "Internal Server Error"

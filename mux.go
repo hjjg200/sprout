@@ -2,15 +2,14 @@ package sprout
 
 import (
     "bytes"
-    "crypto/sha256"
     "errors"
-    "fmt"
     "io"
     "net/http"
     "net/url"
     "regexp"
     "strings"
     "html/template"
+    "text/template/parse"
     "path"
     "os"
 )
@@ -283,9 +282,10 @@ func ( sp *Sprout ) ServeRealtimeAsset( _key string ) HandlerFunc {
 }
 
 func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
+    
     return func( _req *Request ) bool {
 
-        if _t, _ok := sp.templates[_key]; _ok {
+        if _t := sp.templates.Lookup( _key ); _t != nil {
 
             _bytes := &bytes.Buffer{}
             _err   := _t.Execute( _bytes, _data_func() )
@@ -319,59 +319,15 @@ func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interfac
 func ( sp *Sprout ) ServeRealtimeTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
     return func( _req *Request ) bool {
 
-      //w   := _req.Writer
-      //r   := _req.Body
-        /*
-        p   := _key
-        b   := path.Base( p )
-        ext := strings.ToLower( path.Ext( p ) )
-
-        // Template Whitelists
-        if !string_slice_includes( template_extensions, ext ) {
-            // Status Not Found
-            WriteStatus( _req, 404, "Not Found" )
-            return true
-        }
-
-        st, err := os.Stat( p )
-        // Not found in the template folder
-        if os.IsNotExist( err ) {
-            WriteStatus( _req, 404, "Not Found" )
-            return true
-        }
-        if err != nil || st.IsDir() {
-            // Status Internal Server Error
-            WriteStatus( _req, 500, "Internal Server Error" )
-            return true
-        }
-
-        f, err := os.Open( p )
-        if err != nil {
-            // Status Internal Server Error
-            WriteStatus( _req, 500, "Internal Server Error" )
-            return true
-        }
-
-        _buf := &bytes.Buffer{}
-        _buf.ReadFrom( f )
-        _err := f.Close()
-        if err != nil {
-            // Status Internal Server Error
-            WriteStatus( _req, 500, "Internal Server Error" )
-            return true
-        }
-
-        // Executing the Template
-        _template := template.Must( template.New( b ).Parse( _buf.String() ) )
-        */
-        _template, _err := realtime_template( _key )
+        _template := template.New( "" )
+        _err      := realtime_template( _template, _key )
         if _err != nil {
             // return true since the function above writes the status
             WriteError( _req, _err )
             return true
         }
         _buf := bytes.NewBuffer( nil )
-        _err  = _template.Execute( _buf, _data_func() )
+        _err  = _template.ExecuteTemplate( _buf, _key, _data_func() )
         if _err != nil {
             WriteError( _req, Error{
                 500, "Internal Server Error", _err,
@@ -405,14 +361,14 @@ var (
     ErrTemplateFailure  = errors.New( "sprout: failed to read the given template" )
 )
 
-func realtime_template( _path string ) ( *template.Template, error ) {
+func realtime_template( _main *template.Template, _path string ) ( error ) {
 
     p   := _path
     ext := strings.ToLower( path.Ext( p ) )
 
     if !string_slice_includes( template_extensions, ext ) {
         // Status Not Found
-        return nil, Error{
+        return Error{
             404, "Not Found", ErrTemplateNotFound,
         }
     }
@@ -420,13 +376,13 @@ func realtime_template( _path string ) ( *template.Template, error ) {
     st, err := os.Stat( p )
     // Not found in the template folder
     if os.IsNotExist( err ) {
-        return nil, Error{
+        return Error{
             404, "Not Found", ErrTemplateNotFound,
         }
     }
     if err != nil || st.IsDir() {
         // Status Internal Server Error
-        return nil, Error{
+        return Error{
             500, "Internal Server Error", ErrTemplateInvalid,
         }
     }
@@ -434,7 +390,7 @@ func realtime_template( _path string ) ( *template.Template, error ) {
     f, err := os.Open( p )
     if err != nil {
         // Status Internal Server Error
-        return nil, Error{
+        return Error{
             500, "Internal Server Error", ErrTemplateInvalid,
         }
     }
@@ -444,47 +400,36 @@ func realtime_template( _path string ) ( *template.Template, error ) {
     _err := f.Close()
     if _err != nil {
         // Status Internal Server Error
-        return nil, Error{
+        return Error{
             500, "Internal Server Error", ErrTemplateFailure,
         }
     }
 
-    // Realtime templates must have a unique name so that it won't overwrite the cached templates
-    _hash := sha256.New()
-    _hash.Write( _buf.Bytes() )
-    _name := fmt.Sprintf( "%x", _hash.Sum( nil ) )
-
     // Assign
-    _template := template.New( _name )
-    _func_map := template.FuncMap{
-        "template": realtime_template_func,
+    _template := _main.New( _path )
+    _, _err = _template.Parse( _buf.String() )
+    if _err != nil {
+        return Error{
+            500, "Internal Server Error", _err,
+        }
     }
-    _template.Funcs( _func_map )
-    _template = template.Must( _template.Parse( _buf.String() ) )
+    
+    for _, _node := range _template.Tree.Root.Nodes {
+        switch _tmpl_node := _node.( type ) {
+        case *parse.TemplateNode:
+            _fn := _tmpl_node.Name
+            _err = realtime_template( _main, _fn )
+            if _err != nil {
+                return _err
+            }
+        }
+    }
 
     // Executing the Template
-    return _template, nil
+    return nil
 
 }
 
-func realtime_template_func( _path string, _pipeline ...string ) ( *template.Template, error ) {
-
-    _template, _err := realtime_template( _path )
-    if _err != nil {
-        return nil, _err
-    }
-
-    _tmp_string := fmt.Sprintf(
-        "{{ template \"%s\" %s }}",
-        _template.Tree.Name,
-        strings.Join( _pipeline, " " ),
-    )
-
-    _template = template.Must( _template.Parse( _tmp_string  ) )
-
-    return _template, nil
-
-}
 
 // Creates a symlink-like handler for target directory
 //   Example: WithSymlink( "/home/www/somefolder/", "/link/" )

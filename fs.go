@@ -91,9 +91,10 @@ func ( s *Sprout ) LoadCache( fn string ) error {
     }
     defer zr.Close()
 
-    // Empty slices
+    // Empty caches
     s.assets = make( map[string] asset )
-    s.templates = make( map[string] *template.Template )
+    s.templates = template.New( "" )
+    s.templates.Delims( template_left_delimiter, template_right_delimiter )
     s.localizer = s.newLocalizer()
 
     // Assign files
@@ -126,22 +127,19 @@ func ( s *Sprout ) LoadCache( fn string ) error {
             _base   := filepath.Base( fn )
             _ext    := filepath.Ext( _base )
             _locale := _base[:len( _base ) - len( _ext )]
-            s.localizer.appendLocale( _locale, _buf.Bytes() )
+            _err     = s.localizer.appendLocale( _locale, _buf.Bytes() )
+            if _err != nil {
+                panic( _err )
+            }
         case strings.HasPrefix( fn, envDirTemplate ):
             if !string_slice_includes( template_extensions, _ext ) {
                 continue
             }
             _buf := bytes.Buffer{}
             _buf.ReadFrom( frc )
-            s.templates[fn] = template.Must(
-                template
-                    .New( fn )
-                    .Delims( template_left_delimiter, template_right_delimiter )
-                    .Parse( _buf.String() )
-            )
+            _, _err = s.templates.New( fn ).Parse( _buf.String() )
             if _err != nil {
-                // Delete failed ones
-                delete( s.templates, fn )
+                panic( _err )
             }
         }
 
