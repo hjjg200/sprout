@@ -17,9 +17,9 @@
 
 |- Sprout
     |- Servers
-        |- Muxes
-            |- Crate
+        |- Spaces
+            |- Volume
                 |- Localizer
                 |- Template
                 |- Asset
-            |- Cache
+                |- Cache
