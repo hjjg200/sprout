@@ -7,3 +7,4 @@
 1. Realtime locale in realtime methods
 1. Put default locale in localizer not sprout instance
 1. Put type Session into type Request
+1. Package which includes asset, locale, 

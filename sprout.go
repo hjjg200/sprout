@@ -23,7 +23,7 @@ import (
 
 const (
     envAppName = "sprout"
-    envVersion = "pre-alpha 0.5"
+    envVersion = "pre-alpha 0.6"
 
     // Directory names must not contain slashes, dots, etc.
     envDirAsset    = "asset"
@@ -223,7 +223,7 @@ func WriteError( _req *Request, _err error ) {
     if _sp_err, _ok := _err.( Error ); _ok {
         c   = fmt.Sprint( _sp_err.code )
         msg = _sp_err.title
-        
+
         if _sp_err.detail != nil {
             log.Warnln( _sp_err.detail )
         }
