@@ -9,4 +9,7 @@ package sprout
 
 type Handler func( *Request ) bool
 
-func( _handler *Handler ) ServeHTTP( _w http.ResponseWriter, _r *http.Request ) {} // interface http.Handler
+func( _handler Handler ) ServeHTTP( _w http.ResponseWriter, _r *http.Request ) { // interface http.Handler
+    _request := RequestFactory().New( _w, _r )
+    _handler( _request )
+}
