@@ -8,3 +8,5 @@ package sprout
  */
 
 type Handler func( *Request ) bool
+
+func( _handler *Handler ) ServeHTTP( _w http.ResponseWriter, _r *http.Request ) {} // interface http.Handler

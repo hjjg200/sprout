@@ -11,4 +11,5 @@ var  static_locale_factory = &locale_factory{}
 
 func LocaleFactory() *locale_factory {}
 func( _locfac *locale_factory ) FromJSON( _json string ) ( *Locale, error ) {}
-func( _locfac *locale_factory ) FromStringMap( _locale string, _map map[string] string ) ( *Locale, error ) {}
+func( _locfac *locale_factory ) FromMap( _map map[string] string ) ( *Locale, error ) {}
+func( _locfac *locale_factory ) from( _source interface{} ) ( *Locale, error ) {}

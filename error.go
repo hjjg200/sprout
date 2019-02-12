@@ -8,9 +8,20 @@ package sprout
 
 type Error struct {
     code    int
-    message string
     details error
 }
 
-func( _error Error ) Error() string {}
-func( _error Error ) Copy() Error {}
+func( _error Error ) Code() int {
+    return _error.code
+}
+func( _error Error ) Details() error {
+    return _error.details
+}
+func( _error Error ) Error() string {
+    return fmt.Sprintf(
+        "%d - %s - %s",
+        _error.code,
+        SproutVariables().HTTPStatusMessages()( _error.code ),
+        _error.details.Error(),
+    )
+}

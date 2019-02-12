@@ -12,3 +12,83 @@ type Request struct {
     body   *http.Request
     locale string
 }
+
+func( _request *Request ) Writer() http.ResponseWriter {}
+func( _request *Request ) Body() *http.Request {}
+func( _request *Request ) Locale() string {}
+func( _request *Request ) WriteJSON( _data interface{} ) error {
+    _error := json.NewEncoder( _request.writer ).Encode( _data )
+    if _error != nil {
+        return Error{
+            code: 500,
+            details: ErrorFactory().New( "request:", _error )
+        },
+    }
+    return nil
+}
+func( _request *Request ) WriteStatus( _code int ) {
+
+    _request.Writer.Header().Set( "Content-Type", "text/html; charset=utf-8" )
+    _code_string := fmt.Sprint( _code )
+    _message     := SproutVariables().HTTPStatusMessages()( _code )
+    _html        := `<!doctype html>
+<html>
+    <head>
+        <title>` + _code_string + " " + _message + `</title>
+        <style>
+            html {
+                font-family: sans-serif;
+                line-height: 1.0;
+                padding: 0;
+            }
+            body {
+                color: hsl( 220, 5%, 45% );
+                text-align: center;
+                padding: 10px;
+                margin: 0;
+            }
+            div {
+                border: 1px dashed hsl( 220, 5%, 88% );
+                padding: 20px;
+                margin: 0 auto;
+                max-width: 300px;
+                text-align: left;
+            }
+            h1, h2, h3 {
+                display: block;
+                margin: 0 0 5px 0;
+            }
+            footer {
+                color: hsl( 220, 5%, 68% );
+                font-family: monospace;
+                font-size: 1em;
+                text-align: right;
+                line-height: 1.3;
+            }
+        </style>
+    </head>
+    <body>
+        <div>
+            <h1>` + _code_string + `</h1>
+            <h3>` + _message + `</h3>
+            <footer>` + SproutVariables().AppName() + " " + SproutVariables().Version() + `<br />on ` + SproutVariables().OS() + `</footer>
+        </div>
+    </body>
+</html>`
+    _request.writer.Write( []byte( _html ) )
+
+}
+func( _request *Request ) WriteError( _error error ) {
+
+    if _Error, _ok := _error.( Error ); _ok {
+        _request.WriteStatus( _Error.code )
+        if _Error.details != nil {
+            SproutLogger().Warnln( _Error.details )
+        }
+        return
+    } else {
+        _request.WriteStatus( 500 )
+        return
+    }
+
+}
