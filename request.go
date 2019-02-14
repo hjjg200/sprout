@@ -13,18 +13,24 @@ type Request struct {
     locale string
 }
 
-func( _request *Request ) Writer() http.ResponseWriter {}
-func( _request *Request ) Body() *http.Request {}
-func( _request *Request ) Locale() string {}
-func( _request *Request ) WriteJSON( _data interface{} ) error {
+func( _request *Request ) Writer() http.ResponseWriter {
+    return _request.writer
+}
+func( _request *Request ) Body() *http.Request {
+    return _request.body
+}
+func( _request *Request ) Locale() string {
+    return _request.locale
+}
+func( _request *Request ) WriteJSON( _data interface{} ) {
     _error := json.NewEncoder( _request.writer ).Encode( _data )
     if _error != nil {
-        return Error{
+        _Error := Error{
             code: 500,
             details: ErrorFactory().New( "request:", _error )
-        },
+        }
+        _request.WriteErorr( _Error )
     }
-    return nil
 }
 func( _request *Request ) WriteStatus( _code int ) {
 

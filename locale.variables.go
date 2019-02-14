@@ -22,5 +22,9 @@ var  static_locale_variables = &locale_variables{
     },
 }
 
-func LocaleVariables() *locale_variables {}
-func( _locvar *locale_variables ) DefaultThreshold() int {}
+func LocaleVariables() *locale_variables {
+    return static_locale_variables
+}
+func( _locvar *locale_variables ) DefaultThreshold() int {
+    return _locvar.default_threshold
+}
