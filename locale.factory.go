@@ -9,7 +9,8 @@ package sprout
 type locale_factory struct {}
 var  static_locale_factory = &locale_factory{}
 
-func LocaleFactory() *locale_factory {}
+func LocaleFactory() *locale_factory {
+    return static_locale_factory
+}
 func( _locfac *locale_factory ) FromJSON( _json string ) ( *Locale, error ) {}
-func( _locfac *locale_factory ) FromMap( _map map[string] string ) ( *Locale, error ) {}
 func( _locfac *locale_factory ) from( _source interface{} ) ( *Locale, error ) {}
