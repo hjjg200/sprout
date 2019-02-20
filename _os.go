@@ -14,16 +14,6 @@ import (
  + This file deals with the OS-specific operations
  */
 
-
-func checkOS() error {
-    switch runtime.GOOS {
-    case "windows", "linux", "darwin": //, "freebsd", "openbsd":
-        envOS = runtime.GOOS
-        return nil
-    }
-    return ErrNotSupportedOS
-}
-
 func ( s *Sprout ) doesCommandExist( cmd string ) bool {
 
     var (

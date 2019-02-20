@@ -10,6 +10,9 @@ type sprout_variables struct {
     version string
     os string
     http_status_messages map[int] string
+
+    // ERROR DEFINITIONS
+    error_os_not_supported error
 }
 var  static_sprout_variables = &sprout_variables{
     // GENERAL DEFINITIONS
@@ -85,10 +88,22 @@ var  static_sprout_variables = &sprout_variables{
         510: "Not Extended",
         511: "Network Authentication Required",
     },
+
+    // ERROR DEFINITIONS
+    error_os_not_supported: ErrorFactory().New( 500, "sprout:", "the OS is not supported yet" )
 }
 
 func SproutVariables() *sprout_variables {}
-func( _sprvar *sprout_variables ) AppName() string {}
-func( _sprvar *sprout_variables ) Version() string {}
-func( _sprvar *sprout_variables ) OS() string {}
-func( _sprvar *sprout_variables ) HTTPStatusMessages() func( int ) string {}
+// GENERAL DEFINITIONS
+func( _sprvar *sprout_variables ) AppName() string { return _sprvar.app_name }
+func( _sprvar *sprout_variables ) Version() string { return _sprvar.version }
+func( _sprvar *sprout_variables ) OS() string { return _sprvar.os }
+func( _sprvar *sprout_variables ) HTTPStatusMessages() func( int ) string {
+    return func( _index int ) string {
+        return _sprvar.http_status_messages[_index]
+    }
+}
+// ERROR DEFINITIONS
+func( _sprvar *sprout_variables ) ErrorOSNotSupported() error {
+    return _sprvar.error_os_not_supported
+}

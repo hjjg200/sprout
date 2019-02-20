@@ -43,6 +43,17 @@ func( _space *Space ) SetHandlers( _handlers []Handler ) {
     copy( _copy, _hanlders )
     _space.handlers = _copy
 }
+func( _space *Space ) ServeHTTP( _w http.ResponseWriter, _r *http.Request ) { // interface http.Handler
+    _request := RequestFactory().New( _w, _r )
+    _space.Serve( _request )
+}
+func( _space *Space ) Serve( _request *Request ) {
+    for _, _handler := range _space.handlers {
+        if _handler( _request ) {
+            break
+        }
+    }
+}
 func( _space *Space ) WithHandler( _handler Handler ) {
     _space.handlers = append( _space.handlers, _handler )
 }

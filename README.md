@@ -2,6 +2,16 @@
 
 A simple web framework for Golang.
 
+## Overview
+
+### Naming Convention
+
+- Public variables -- PascalCase
+- Private variables -- snake_case
+- Local variables -- _snake_case ( snake case with leading an underscore )
+- Variables inside function in function -- _2snake_case ( snake case with an underscore and the depth )
+    - 2 here means its depth is 2
+
 ## Examples
 
 ### Creating a Server

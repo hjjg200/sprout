@@ -1,13 +1,15 @@
 package sprout
 
 /*
- + LOCALE GROUP
+ + LOCALIZER
  */
 
-type LocaleGroup struct{
+type Localizer struct{
     locales map[string] *Locale
     default_locale string
     threshold int
+    left_delimiter string
+    right_delimiter string
 }
 
 func( )
