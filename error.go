@@ -19,7 +19,7 @@ func( _error Error ) Details() error {
 }
 func( _error Error ) Error() string {
     return fmt.Sprintf(
-        "%d - %s - %s",
+        "%d %s - %s",
         _error.code,
         SproutVariables().HTTPStatusMessages()( _error.code ),
         _error.details.Error(),

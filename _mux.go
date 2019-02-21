@@ -282,7 +282,7 @@ func ( sp *Sprout ) ServeRealtimeAsset( _key string ) HandlerFunc {
 }
 
 func ( sp *Sprout ) ServeCachedTemplate( _key string, _data_func func() interface{} ) HandlerFunc {
-    
+
     return func( _req *Request ) bool {
 
         if _t := sp.templates.Lookup( _key ); _t != nil {
@@ -413,7 +413,7 @@ func realtime_template( _main *template.Template, _path string ) ( error ) {
             500, "Internal Server Error", _err,
         }
     }
-    
+
     for _, _node := range _template.Tree.Root.Nodes {
         switch _tmpl_node := _node.( type ) {
         case *parse.TemplateNode:

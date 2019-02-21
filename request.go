@@ -13,6 +13,16 @@ type Request struct {
     locale string
 }
 
+func( _request *Request ) RemoveLocaleFromURL() {
+    if len( _request.locale ) == 0 {
+        return
+    }
+    // Check if the url starts with locale name
+    _prefix := "/" + _request.locale
+    if strings.HasPrefix( _request.URL.Path, _prefix ) {
+        _request.URL.Path = "/" + strings.TrimPrefix( _prefix )
+    }
+}
 func( _request *Request ) Writer() http.ResponseWriter {
     return _request.writer
 }

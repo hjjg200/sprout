@@ -70,7 +70,7 @@ func( _locfac *locale_factory ) FromJSON( _json []byte ) ( *Locale, error ) {
     _recursive_do( "", _map )
 
     return &Locale{
-        Language: _language,
+        Language: strings.ToLower( _language ),
         locale: _locale,
     }, nil
 

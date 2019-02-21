@@ -22,9 +22,6 @@ import (
  */
 
 const (
-    envAppName = "sprout"
-    envVersion = "pre-alpha 0.6"
-
     // Directory names must not contain slashes, dots, etc.
     envDirAsset    = "asset"
     envDirCache    = "cache"
@@ -32,9 +29,6 @@ const (
     envDirTemplate = "template"
 )
 
-var (
-    envOS string
-)
 
 /*
  + Public Variables
@@ -49,27 +43,6 @@ var (
 var (
     EnvFilenameTimeFormat = "20060102-150405"
 )
-
-type asset struct {
-    modTime time.Time
-    data    []byte
-
-    // sha256 hash of the file
-    hash    string
-}
-
-func makeAsset( mt time.Time, r io.Reader ) asset {
-    h   := sha256.New()
-    mts := strconv.FormatInt( mt.Unix(), 10 )
-    h.Write( []byte( mts ) )
-    buf := bytes.NewBuffer( nil )
-    io.Copy( buf, r )
-    return asset{
-        modTime: mt,
-        data: buf.Bytes(),
-        hash: fmt.Sprintf( "%x", h.Sum( nil ) ),
-    }
-}
 
 type Sprout struct {
     cwd       string
@@ -145,55 +118,5 @@ func ( sp *Sprout ) SetDefaultLocale( locale string ) error {
     }
     log.Infoln( "Changed the default locale to", locale )
     sp.default_locale = locale
-    return nil
-}
-
-func sanityCheck() error {
-    // check if there is any sass, scss if so check sass installed
-    log.Infoln( "Doing a sanity check..." )
-    if err := checkOS(); err != nil {
-        log.Severeln( "Sanity check failed!" )
-    }
-    if err := ensureDirectories(); err != nil {
-        log.Severeln( "Sanity check failed!" )
-    }
-    log.Infoln( "Everything looks fine!" )
-    return nil
-}
-
-func ensureDirectories() error {
-    log.Infoln( "Ensuring all the necessary directories..." )
-    _dirs_to_ensure := []string{
-        envDirAsset, envDirCache, envDirLocale, envDirTemplate,
-    }
-    for _, _dir := range _dirs_to_ensure {
-        _err := ensureDirectory( _dir )
-        if _err != nil {
-            log.Warnln( "Could not ensure all the directories!" )
-            return _err
-        }
-    }
-    log.Infoln( "Ensured all the directories!" )
-    return nil
-}
-
-func ensureDirectory( p string ) error {
-    log.Infoln( "Ensuring a directory...", p )
-    st, err := os.Stat( p )
-    switch {
-    case os.IsNotExist( err ):
-        err = os.Mkdir( p, 0750 )
-        if err != nil {
-            log.Warnln( "Error during ensuring the directory:", p, err )
-            return err
-        }
-    case err != nil:
-        log.Warnln( "Error during ensuring the directory:", p, err )
-        return err
-    case !st.IsDir():
-        log.Warnln( "Error during ensuring the directory:", p, ErrDirectory )
-        return ErrDirectory
-    }
-    log.Infoln( "Directory ready to go", p )
     return nil
 }
