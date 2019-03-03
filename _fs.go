@@ -26,17 +26,6 @@ import (
 
 var fileHoldGroup = together.NewHoldGroup()
 
-// For sorting cache names
-type cacheNames []string
-
-func ( cn cacheNames ) Len() int { return len( cn ) }
-func ( cn cacheNames ) Swap( i, j int ) { cn[i], cn[j] = cn[j], cn[i] }
-func ( cn cacheNames ) Less( i, j int ) bool {
-    ti := parseTimeFromCacheName( cn[i] )
-    tj := parseTimeFromCacheName( cn[j] )
-    return ti.Sub( tj ) < 0
-}
-
 func formatCacheName( timeStr, hash string ) string {
     return timeStr + "-" + hash[:6] + ".zip"
 }

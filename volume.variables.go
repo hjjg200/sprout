@@ -9,6 +9,8 @@ type volume_variables struct {
     template_extensions []string
     template_left_delimiter string
     template_right_delimiter string
+    cache_name_format string
+    max_asset_size int64 // in bytes
 
     // DEFAULT DEFINITIONS
     default_whitelisted_extensions []string
@@ -23,6 +25,8 @@ var  static_volume_variables = &volume_variables{
     },
     template_left_delimiter: "{{",
     template_right_delimiter: "}}",
+    cache_name_format: "cache-%d",
+    max_asset_size: 10 << 20, // 10MB
 
     // DEFAULT DEFINITIONS
     default_whitelisted_extensions: []string{
