@@ -1,5 +1,8 @@
 package i18n
 
+import (
+    "../util"
+)
 
 var (
     // GENERAL DEFINITIONS
@@ -12,7 +15,10 @@ var (
     c_defaultQueryParameter string = "l"
 
     // ERROR DEFINITIONS
-    ErrorInvalidLocale = util.NewError( 500, "the given locale is invalid" )
-    ErrorInvalidDelimiter = util.NewError( 500, "the given delimiters are invalid" )
-    ErrorInvalidThreshold = util.NewError( 500, "the given threshold is invalid" )
+    ErrInvalidLocale = util.NewError( 500, "the given locale is invalid" )
+    ErrInvalidDelimiters = util.NewError( 500, "the given delimiters are invalid" )
+    ErrInvalidThreshold = util.NewError( 500, "the given threshold is invalid" )
+    ErrInvalidParameter = util.NewError( 500, "the given parameter is invalid" )
+    ErrMalformedJson = util.NewError( 500, "the given JSON is malformed" )
+    ErrLocaleNonExistent = util.NewError( 500, "the specified locale does not exist" )
 )

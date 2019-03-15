@@ -4,17 +4,17 @@ import (
 
 )
 
-type acceptLangEntry struct{
-    language string
-    qFactor  float64
+type acceptLanguageEntry struct{
+    locale  string
+    qFactor float64
 }
-type acceptLangEntries []acceptLangEntry
+type acceptLanguageEntries []acceptLanguageEntry
 
-func( entries acceptLangEntries ) Len() int { return len( entries ) }
-func( entries acceptLangEntries ) Swap( i, j int ) {
+func( entries acceptLanguageEntries ) Len() int { return len( entries ) }
+func( entries acceptLanguageEntries ) Swap( i, j int ) {
     entries[i], entries[j] = entries[j], entries[i]
 }
-func( entries acceptLangEntries ) Less( i, j int ) bool {
+func( entries acceptLanguageEntries ) Less( i, j int ) bool {
     return entries[i].qFactor < entries[j].qFactor
 }
 
@@ -53,4 +53,19 @@ func IsValidLocaleName( name string ) bool {
         return false
     }
     return true
+}
+
+func strContainsAt( src, sub string, i int ) bool {
+    
+    // If the rest string is shorter than the substring
+    if i + len( sub ) > len( src ) {
+        return false
+    }
+    // Check the first letter
+    if src[i] != sub[0] {
+        return false
+    }
+    // Check the whole substring
+    return src[i:i + len( sub )] == sub
+    
 }
