@@ -79,6 +79,11 @@ func( i1 *I18n ) L( locale, src string ) string {
     return i1.Localize( locale, src )
 }
 func( i1 *I18n ) Localize( locale, src string ) string {
+    
+    // If 0 locale
+    if len( i1.locales ) == 0 {
+        return src
+    }
 
     // Do
     for i := 0; i < i1.threshold; i++ {
@@ -138,10 +143,8 @@ func( i1 *I18n ) Localize( locale, src string ) string {
         
         // Replace the found keys
         for key := range foundKeys {
-            plc, localeOk := i1.locales[locale]
-            if !localeOk {
-                plc = i1.locales[i1.defaultLocale]
-            }
+            locale  = i1.ParseSingleLocale( locale )
+            plc    := i1.locales[locale]
             if val, ok := plc.set[key]; ok {
                 src = strings.Replace(
                     src,
@@ -156,6 +159,9 @@ func( i1 *I18n ) Localize( locale, src string ) string {
 
     return src
     
+}
+func( i1 *I18n ) NumLocale() int {
+    return len( i1.locales )
 }
 func( i1 *I18n ) AddLocale( locale *Locale ) {
     // Set it as the default locale if it is the first locale
@@ -203,7 +209,7 @@ func( i1 *I18n ) SetDelimiters( left, right string ) error {
  * Retreives a suitable locale for localization from http accept language string
  */
 
-func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) string {
+func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
 
     // Split the header
     entries := make( acceptLanguageEntries, 0 )
@@ -218,8 +224,8 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) string {
             lcName       := split[i][:semicolon]
             qFactor, err := strconv.ParseFloat( split[i][semicolon + 3:], 64 )
             if err != nil {
-                panic( err ) // Malformed accept-language
-                return i1.defaultLocale
+                //panic( err ) 
+                return "", err // Malformed accept-language
             }
             entries = append( entries, acceptLanguageEntry{
                 locale: lcName,
@@ -241,24 +247,75 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) string {
     for i := range entries {
         switch entries[i].locale {
         case "*":
-            return i1.defaultLocale
+            // If wildcard, return default
+            return i1.defaultLocale, nil
         default:
             // Check if localizer has the language
-            _, ok := i1.locales[entries[i].locale]
-            if ok {
-                return entries[i].locale
-            }
-            // If not, try matching langauge only, without the region
-            split := strings.SplitN( entries[i].locale, "-", 2 )
-            for key := range i1.locales {
-                if strings.HasPrefix( key, split[0] ) {
-                    return key
-                }
+            lcName, err := i1.ParseSingleLocale( i )
+            if err == nil {
+                return lcName, nil
             }
         }
     }
 
     // If not found
-    return i1.defaultLocale
+    return "", ErrLocaleNonExistent
 
+}
+
+func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
+    
+    // Range cookies
+    for i := range cks {
+        if cks[i].Name == i1.cookie {
+            lcName, err := i1.ParseSingleLoclae( cks[i].Value )
+            if err != nil {
+                return "", ErrLocaleNonExistent
+            }
+            return lcName, nil
+        }
+    }
+    return "", ErrLocaleNonExistent
+    
+}
+
+func( i1 *I18n ) ParseUrl( u *url.URL ) ( string, error ) {
+    
+    // Query
+    vals   := u.Query()
+    lcName := vals.Get( i1.queryParameter )
+    
+    //
+    if lcName == "" {
+        return "", ErrLocaleNonExistent
+    } else {
+        lcName, err := i1.ParseSingleLocale( lcName )
+        if err != nil {
+            return "", err
+        }
+        return lcName, nil
+    }
+    
+}
+
+func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
+    
+    // Check if exists
+    if _, ok := i1.locales[lcName]; ok {
+        return lcName, nil
+    }
+    
+    // Check if the lang exists
+    split := strings.SplitN( lcName, "-", 2 )
+    if len( split ) == 2 {
+        for i := range i1.locales {
+            if strings.HasPrefix( i, split[0] ) {
+                return i, nil
+            }
+        }
+    }
+    
+    // Return default
+    return "", ErrLocaleNonExistent
+    
 }
