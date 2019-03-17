@@ -24,6 +24,17 @@ func NewError( code int, args... interface{} ) Error {
     }
 }
 
+func( err Error ) Append( args... interface{} ) Error {
+    for i := range args {
+        err.detail += " " + fmt.Sprint( args[i] )
+    }
+    return err
+}
+
+func( err Error ) String() string {
+    return fmt.Sprintf( "%d %s: %s", err.code, HttpStatusMessages[err.code], err.detail )
+}
+
 func( err Error ) Error() string {
-    return err.detail
+    return err.String()
 }

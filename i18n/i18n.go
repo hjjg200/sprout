@@ -68,7 +68,10 @@ func( i1 *I18n ) ImportDirectory( path string ) error {
         }
         
         // Assign
-        i1.AddLocale( lc )
+        err = i1.AddLocale( lc )
+        if err != nil {
+            return err
+        }
         
     }
     
@@ -160,43 +163,56 @@ func( i1 *I18n ) Localize( locale, src string ) string {
     return src
     
 }
+func( i1 *I18n ) HasLocale( lcName string ) bool {
+    for i := range i1.locales {
+        if i == lcName {
+            return true
+        }
+    }
+    return false
+}
 func( i1 *I18n ) NumLocale() int {
     return len( i1.locales )
 }
-func( i1 *I18n ) AddLocale( locale *Locale ) {
+func( i1 *I18n ) AddLocale( locale *Locale ) error {
     // Set it as the default locale if it is the first locale
     if len( i1.locales ) == 0 {
         i1.defaultLocale = locale.name
     }
+    // Check if exists
+    if _, ok := i1.locales[locale.name]; ok {
+        return ErrLocaleExists.Append( locale.name )
+    }
     i1.locales[locale.name] = locale
+    return nil
 }
 func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
     if len( lcName ) == 0 {
-        return ErrInvalidParameter
+        return ErrInvalidParameter.Append( lcName )
     }
     if _, ok := i1.locales[lcName]; !ok {
-        return ErrLocaleNonExistent
+        return ErrLocaleNonExistent.Append( lcName )
     }
     i1.defaultLocale = lcName
     return nil
 }
 func( i1 *I18n ) SetQueryParameter( param string ) error {
     if len( param ) == 0 {
-        return ErrInvalidParameter
+        return ErrInvalidParameter.Append( param )
     }
     i1.queryParameter = param
     return nil
 }
 func( i1 *I18n ) SetCookie( cookie string ) error {
     if len( cookie ) == 0 {
-        return ErrInvalidParameter
+        return ErrInvalidParameter.Append( cookie )
     }
     i1.cookie = cookie
     return nil
 }
 func( i1 *I18n ) SetDelimiters( left, right string ) error {
     if len( left ) == 0 || len( right ) == 0 {
-        return ErrInvalidDelimiters
+        return ErrInvalidDelimiters.Append( left, right )
     }
     i1.leftDelimiter = left
     i1.rightDelimiter = right
@@ -259,7 +275,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
     }
 
     // If not found
-    return "", ErrLocaleNonExistent
+    return "", ErrLocaleNonExistent.Append( acptLng )
 
 }
 
@@ -270,12 +286,12 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
         if cks[i].Name == i1.cookie {
             lcName, err := i1.ParseSingleLoclae( cks[i].Value )
             if err != nil {
-                return "", ErrLocaleNonExistent
+                return "", ErrLocaleNonExistent.Append( cks[i].Value )
             }
             return lcName, nil
         }
     }
-    return "", ErrLocaleNonExistent
+    return "", ErrCookieNonExistent
     
 }
 
@@ -287,11 +303,11 @@ func( i1 *I18n ) ParseUrl( u *url.URL ) ( string, error ) {
     
     //
     if lcName == "" {
-        return "", ErrLocaleNonExistent
+        return "", ErrQueryNonExistent
     } else {
         lcName, err := i1.ParseSingleLocale( lcName )
         if err != nil {
-            return "", err
+            return "", util.MakeError( 500, err )
         }
         return lcName, nil
     }
