@@ -12,6 +12,7 @@ import (
 
 type I18n struct {
     locales map[string] *Locale
+    localizers map[string] *Localizer
     defaultLocale string
     cookie string
     queryParameter string
@@ -23,6 +24,7 @@ type I18n struct {
 func New() *I18n {
     return &I18n{
         locales: make( map[string] *Locale ),
+        localizers: make( map[string] *Localizer ),
         defaultLocale: "",
         cookie: c_defaultCookie,
         queryParameter: c_defaultQueryParameter,
@@ -33,56 +35,56 @@ func New() *I18n {
 }
 
 func( i1 *I18n ) ImportDirectory( path string ) error {
-    
+
     // Read the dir
     fis, err := ioutil.ReadDir( path )
     if err != nil {
         return err
     }
-    
+
     // Foreach
     for _, fi := range fis {
-        
+
         // Check ext
         ext := filepath.Ext( fi.Name() )
         if ext != ".json" {
             break
         }
-        
+
         // Open
         f, err := os.Open( path + "/" + fi.Name() )
         if err != nil {
             return err
         }
-        
+
         // Read
         buf := bytes.NewBuffer( nil )
         io.Copy( buf, f )
         f.Close()
-        
+
         // Parse
         lc  := NewLocale()
         err  = lc.ParseJson( buf.Bytes() )
         if err != nil {
             return err
         }
-        
+
         // Assign
         err = i1.AddLocale( lc )
         if err != nil {
             return err
         }
-        
+
     }
-    
+
     return nil
-    
+
 }
 func( i1 *I18n ) L( locale, src string ) string {
     return i1.Localize( locale, src )
 }
 func( i1 *I18n ) Localize( locale, src string ) string {
-    
+
     // If 0 locale
     if len( i1.locales ) == 0 {
         return src
@@ -105,7 +107,7 @@ func( i1 *I18n ) Localize( locale, src string ) string {
             left      = i1.leftDelimiter
             right     = i1.rightDelimiter
         )
-        
+
         for x := 0; x < srcLen; {
             switch {
             case strContainsAt( src, left, x ):
@@ -114,11 +116,11 @@ func( i1 *I18n ) Localize( locale, src string ) string {
                 lastBegin = x
                 x += len( left )
             case strContainsAt( src, right, x ):
-                
+
                 // Trim whitespace
                 key = strings.TrimSpace( key )
                 foundKeys[key] = struct{}{}
-                
+
                 // Remove whitespaces near delimiters
                 newBlock := left + key + right
                 blockLen := x + len( right ) - 1 - lastBegin + 1
@@ -130,12 +132,12 @@ func( i1 *I18n ) Localize( locale, src string ) string {
                 diff   := blockLen - len( newBlock )
                 srcLen -= diff
                 x      -= diff
-                
+
                 // Reset
                 key  = ""
                 read = false
                 x += len( right )
-                
+
             default:
                 if read {
                     key += string( src[x] )
@@ -143,7 +145,7 @@ func( i1 *I18n ) Localize( locale, src string ) string {
                 x++
             }
         }
-        
+
         // Replace the found keys
         for key := range foundKeys {
             locale  = i1.ParseSingleLocale( locale )
@@ -161,8 +163,9 @@ func( i1 *I18n ) Localize( locale, src string ) string {
     }
 
     return src
-    
+
 }
+
 func( i1 *I18n ) HasLocale( lcName string ) bool {
     for i := range i1.locales {
         if i == lcName {
@@ -171,9 +174,11 @@ func( i1 *I18n ) HasLocale( lcName string ) bool {
     }
     return false
 }
+
 func( i1 *I18n ) NumLocale() int {
     return len( i1.locales )
 }
+
 func( i1 *I18n ) AddLocale( locale *Locale ) error {
     // Set it as the default locale if it is the first locale
     if len( i1.locales ) == 0 {
@@ -184,8 +189,18 @@ func( i1 *I18n ) AddLocale( locale *Locale ) error {
         return ErrLocaleExists.Append( locale.name )
     }
     i1.locales[locale.name] = locale
+    i1.localizers[locale.name], _ = NewLocalizer( i1, locale.name )
     return nil
 }
+
+func( i1 *I18n ) Locale( lcName string ) ( *Locale, bool ) {
+    return i1.locales[lcName]
+}
+
+func( i1 *I18n ) Localizer( lcName string ) ( *Localizer, bool ) {
+    return i1.localizers[lcName]
+}
+
 func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
     if len( lcName ) == 0 {
         return ErrInvalidParameter.Append( lcName )
@@ -196,6 +211,7 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
     i1.defaultLocale = lcName
     return nil
 }
+
 func( i1 *I18n ) SetQueryParameter( param string ) error {
     if len( param ) == 0 {
         return ErrInvalidParameter.Append( param )
@@ -203,6 +219,7 @@ func( i1 *I18n ) SetQueryParameter( param string ) error {
     i1.queryParameter = param
     return nil
 }
+
 func( i1 *I18n ) SetCookie( cookie string ) error {
     if len( cookie ) == 0 {
         return ErrInvalidParameter.Append( cookie )
@@ -210,6 +227,7 @@ func( i1 *I18n ) SetCookie( cookie string ) error {
     i1.cookie = cookie
     return nil
 }
+
 func( i1 *I18n ) SetDelimiters( left, right string ) error {
     if len( left ) == 0 || len( right ) == 0 {
         return ErrInvalidDelimiters.Append( left, right )
@@ -240,7 +258,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
             lcName       := split[i][:semicolon]
             qFactor, err := strconv.ParseFloat( split[i][semicolon + 3:], 64 )
             if err != nil {
-                //panic( err ) 
+                //panic( err )
                 return "", err // Malformed accept-language
             }
             entries = append( entries, acceptLanguageEntry{
@@ -280,7 +298,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
 }
 
 func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
-    
+
     // Range cookies
     for i := range cks {
         if cks[i].Name == i1.cookie {
@@ -292,15 +310,19 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
         }
     }
     return "", ErrCookieNonExistent
-    
+
 }
 
-func( i1 *I18n ) ParseUrl( u *url.URL ) ( string, error ) {
-    
+func( i1 *I18n ) ParseUrlPath( u *url.URL ) ( string, error ) {
+
+}
+
+func( i1 *I18n ) ParseUrlQuery( u *url.URL ) ( string, error ) {
+
     // Query
     vals   := u.Query()
     lcName := vals.Get( i1.queryParameter )
-    
+
     //
     if lcName == "" {
         return "", ErrQueryNonExistent
@@ -311,16 +333,16 @@ func( i1 *I18n ) ParseUrl( u *url.URL ) ( string, error ) {
         }
         return lcName, nil
     }
-    
+
 }
 
 func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
-    
+
     // Check if exists
     if _, ok := i1.locales[lcName]; ok {
         return lcName, nil
     }
-    
+
     // Check if the lang exists
     split := strings.SplitN( lcName, "-", 2 )
     if len( split ) == 2 {
@@ -330,8 +352,8 @@ func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
             }
         }
     }
-    
+
     // Return default
     return "", ErrLocaleNonExistent
-    
+
 }

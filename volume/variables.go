@@ -6,7 +6,7 @@ const (
     c_assetDirectory = "asset"
     c_i18nDirectory = "i18n"
     c_templateDirectory = "template"
-    
+
 )
 
 var (
@@ -21,5 +21,8 @@ var (
     ErrInvalidTemplate = util.NewError( 500, "the given template is invalid" )
     ErrTemplateNonExistent = util.NewError( 500, "there is no template by the given name" )
     ErrTemplateExecError = util.NewError( 500, "the template execution resulted in an error" )
-    
+    ErrFileError = util.NewError( 500, "was not able to access the file" )
+    ErrZipImport = util.NewError( 500, "was not able to import the zip file" )
+    ErrI18nExport = util.NewError( 500, "unable to export the i18n instance" )
+
 )
