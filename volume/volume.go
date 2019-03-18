@@ -179,6 +179,7 @@ func( vol *Volume ) ImportLocaleDirectory( osPath string ) error {
  */
 
 func( vol *Volume ) ImportDirectory( path string ) error {
+    vol.Reset()
     return filepath.Walk( path, vol.WalkFuncBasedOn( path ) )
 }
 
@@ -223,6 +224,8 @@ func( vol *Volume ) walkFuncBasedOn( basePath string ) filepath.WalkFunc {
 }
 
 func( vol *Volume ) ImportZip( zr *zip.Reader ) error {
+    
+    vol.Reset()
 
     for _, fh := range zr.File {
 

@@ -63,7 +63,11 @@ func( spc *Space ) ServeRequest( req *Request ) {
     }
 
     // Check locale with the space's i18n
-    req.CheckLocale( spc.volume.i18n )
+    if spc.volume != nil {
+        if spc.volume.i18n != nil {
+            req.CheckLocale( spc.volume.i18n )
+        }
+    }
 
     // Handle
     for _, handler := range spc.handlers {
@@ -98,3 +102,15 @@ func( spc *Space ) ContainsAlias( alias string ) bool {
     return false
 
 }
+
+// With funcs
+
+func( spc *Space ) WithHandler( hnd Handler ) {
+    spc.handlers = append( spc.handlers, hnd )
+}
+
+func( spc *Space ) WithReverseProxy( url string ) {}
+func( spc *Space ) WithSymlink( targetPath, linkPath string ) {}
+func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {}
+func( spc *Space ) WithAssetServer() {}
+func( spc *Space ) WithAuthenticator( auther Authenticator ) {}

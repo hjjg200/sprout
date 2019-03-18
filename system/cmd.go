@@ -15,7 +15,6 @@ func makeExec( args ...string ) *exec.Cmd {
     case "windows":
         return exec.Command( "cmd", append( []string{ "/C" }, args... )... )
     }
-    // Panic
     return nil
 }
 
