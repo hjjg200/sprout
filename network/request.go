@@ -19,7 +19,19 @@ func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
 
 }
 
-func( req *Request ) DetectLocale( i1 *i18n.I18n ) {
+func( req *Request ) Body() *http.Request {
+    return req.body
+}
+
+func( req *Reqeust ) Writer() http.ResponseWriter {
+    return req.writer
+}
+
+func( req *Request ) Localizer() *i18n.Localizer {
+    return req.localizer
+}
+
+func( req *Request ) CheckLocale( i1 *i18n.I18n ) {
 
     // Check locale
     switch i1.NumLocale() {
@@ -56,8 +68,4 @@ func( req *Request ) DetectLocale( i1 *i18n.I18n ) {
 
     req.localizer = nil
 
-}
-
-func( req *Request ) SetLocalizer( lczr *i18n.Localizer ) {
-    req.localizer = lczr
 }

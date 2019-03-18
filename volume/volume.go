@@ -172,13 +172,17 @@ func( vol *Volume ) ImportLocaleDirectory( osPath string ) error {
 }
 
 /*
- + WalkFuncBasedOn
+ + walkFuncBasedOn
  *
  * filepath.WalkFunc
  * relpath must be volume-path-ready e.g.) templates/
  */
 
-func( vol *Volume ) WalkFuncBasedOn( basePath string ) filepath.WalkFunc {
+func( vol *Volume ) ImportDirectory( path string ) error {
+    return filepath.Walk( path, vol.WalkFuncBasedOn( path ) )
+}
+
+func( vol *Volume ) walkFuncBasedOn( basePath string ) filepath.WalkFunc {
 
     return func( osPath string, fi os.FileInfo, err error ) error {
 
