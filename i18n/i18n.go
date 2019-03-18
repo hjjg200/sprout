@@ -2,8 +2,11 @@ package i18n
 
 import (
     "bytes"
+    "path/filepath"
     "io"
     "io/ioutil"
+    "net/http"
+    "net/url"
     "os"
     "sort"
     "strconv"
@@ -80,10 +83,10 @@ func( i1 *I18n ) ImportDirectory( path string ) error {
     return nil
 
 }
-func( i1 *I18n ) L( locale, src string ) string {
-    return i1.Localize( locale, src )
+func( i1 *I18n ) L( lcName, src string ) string {
+    return i1.Localize( lcName, src )
 }
-func( i1 *I18n ) Localize( locale, src string ) string {
+func( i1 *I18n ) Localize( lcName, src string ) string {
 
     // If 0 locale
     if len( i1.locales ) == 0 {
@@ -148,8 +151,11 @@ func( i1 *I18n ) Localize( locale, src string ) string {
 
         // Replace the found keys
         for key := range foundKeys {
-            locale  = i1.ParseSingleLocale( locale )
-            plc    := i1.locales[locale]
+            lcName, err := i1.ParseSingleLocale( lcName )
+            if err != nil {
+                lcName =i1.defaultLocale
+            }
+            plc := i1.locales[lcName]
             if val, ok := plc.set[key]; ok {
                 src = strings.Replace(
                     src,
@@ -194,11 +200,17 @@ func( i1 *I18n ) AddLocale( locale *Locale ) error {
 }
 
 func( i1 *I18n ) Locale( lcName string ) ( *Locale, bool ) {
-    return i1.locales[lcName]
+    lc, ok := i1.locales[lcName]
+    return lc, ok
+}
+
+func( i1 *I18n ) Locales() ( map[string] *Locale ) {
+    return i1.locales
 }
 
 func( i1 *I18n ) Localizer( lcName string ) ( *Localizer, bool ) {
-    return i1.localizers[lcName]
+    lczr, ok := i1.localizers[lcName]
+    return lczr, ok
 }
 
 func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
@@ -285,7 +297,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
             return i1.defaultLocale, nil
         default:
             // Check if localizer has the language
-            lcName, err := i1.ParseSingleLocale( i )
+            lcName, err := i1.ParseSingleLocale( entries[i].locale )
             if err == nil {
                 return lcName, nil
             }
@@ -302,7 +314,7 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
     // Range cookies
     for i := range cks {
         if cks[i].Name == i1.cookie {
-            lcName, err := i1.ParseSingleLoclae( cks[i].Value )
+            lcName, err := i1.ParseSingleLocale( cks[i].Value )
             if err != nil {
                 return "", ErrLocaleNonExistent.Append( cks[i].Value )
             }
@@ -314,6 +326,15 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
 }
 
 func( i1 *I18n ) ParseUrlPath( u *url.URL ) ( string, error ) {
+
+    // If too short
+    if len( u.Path ) == 1 {
+        return "", ErrUrlHasNoLocale
+    }
+
+    // Parse
+    split := strings.SplitN( u.Path[1:], "/", 2 )
+    return i1.ParseSingleLocale( split[0] )
 
 }
 
@@ -329,7 +350,7 @@ func( i1 *I18n ) ParseUrlQuery( u *url.URL ) ( string, error ) {
     } else {
         lcName, err := i1.ParseSingleLocale( lcName )
         if err != nil {
-            return "", util.MakeError( 500, err )
+            return "", err
         }
         return lcName, nil
     }

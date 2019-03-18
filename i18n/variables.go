@@ -24,4 +24,6 @@ var (
     ErrLocaleExists = util.NewError( 500, "a locale by the given name already exists" )
     ErrCookieNonExistent = util.NewError( 500, "the client does not have the locale cookie" )
     ErrQueryNonExistent = util.NewError( 500, "the url does not have the query parameter" )
+    ErrUrlHasNoLocale = util.NewError( 500, "the url does not contain locale" )
+
 )

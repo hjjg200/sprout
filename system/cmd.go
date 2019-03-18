@@ -1,62 +1,72 @@
 package system
 
+import (
+    "bytes"
+    "os/exec"
+    "runtime"
+
+    "../util"
+)
+
 func makeExec( args ...string ) *exec.Cmd {
-    switch envOS {
+    switch runtime.GOOS {
     case "linux", "darwin":
         return exec.Command( "bash", append( []string{ "-c" }, args... )... )
     case "windows":
         return exec.Command( "cmd", append( []string{ "/C" }, args... )... )
     }
+    // Panic
+    return nil
 }
 
 func Exec( args ...string ) error {
-    
+
     var (
         stderr bytes.Buffer
     )
-    
+
     // Set
     e := makeExec( args... )
     e.Stderr = &stderr
-    
+
     // Run
     err := e.Run()
-    
+
     // Check err
     if err != nil {
-        return util.MakeError( 500, err, stderr.String() )
+        return util.NewError( 500, err, stderr.String() )
     }
-    
+
     return nil
-    
+
 }
 
 func ExecOutput( args ...string ) ( []byte, error ) {
-    
+
     var (
         stderr bytes.Buffer
         stdout bytes.Buffer
     )
-    
+
     // Set
     e := makeExec( args... )
     e.Stderr = &stderr
     e.Stdout = &stdout
-    
+
     // Run
     err := e.Run()
-    
+
     // Check err
     if err != nil {
-        return stdout.Bytes(), util.MakeError( 500, err, stderr.String() )
+        return stdout.Bytes(), util.NewError( 500, err, stderr.String() )
     }
-    
-    return stdout.Bytes(), nil 
-    
+
+    return stdout.Bytes(), nil
+
 }
 
 func DoesCommandExist( cmd string ) ( bool, error ) {
-    
+
     var (
         err error
         out bytes.Buffer
@@ -85,5 +95,5 @@ func DoesCommandExist( cmd string ) ( bool, error ) {
     }
 
     return false, nil
-    
+
 }

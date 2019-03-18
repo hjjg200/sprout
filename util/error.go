@@ -2,6 +2,7 @@ package util
 
 import (
     "fmt"
+    "strings"
 )
 
 type Error struct {
@@ -22,6 +23,13 @@ func NewError( code int, args... interface{} ) Error {
         code: code,
         detail: msg,
     }
+}
+
+func ErrorHasPrefix( err error, Err2 Error ) bool {
+    if Err1, ok := err.( Error ); ok {
+        return strings.HasPrefix( Err1.detail, Err2.detail )
+    }
+    return false
 }
 
 func( err Error ) Append( args... interface{} ) Error {

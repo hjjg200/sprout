@@ -1,5 +1,9 @@
 package volume
 
+import (
+    "../util"
+)
+
 const (
 
     // CONSTANTS
@@ -23,6 +27,9 @@ var (
     ErrTemplateExecError = util.NewError( 500, "the template execution resulted in an error" )
     ErrFileError = util.NewError( 500, "was not able to access the file" )
     ErrZipImport = util.NewError( 500, "was not able to import the zip file" )
+    ErrZipExport = util.NewError( 500, "unable to export the zip" )
+    ErrAssetExport = util.NewError( 500, "unable to export the asset" )
     ErrI18nExport = util.NewError( 500, "unable to export the i18n instance" )
+    ErrTemplateExport = util.NewError( 500, "unable to export the template" )
 
 )

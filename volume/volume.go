@@ -1,28 +1,37 @@
 package volume
 
+import (
+    "archive/zip"
+    "bytes"
+    "html/template"
+    "io"
+    "os"
+    "path/filepath"
+    "strings"
+    "time"
+
+    "../i18n"
+    "../util"
+)
+
 type Volume struct {
     assets map[string] *Asset
     i18n *i18n.I18n
-    templates []*template.Template
+    rootTemplate *template.Template
+    templates map[string] *Template
 }
 
 func NewVolume() *Volume {
-    return &Volume{
-        assets: make( map[string] *Asset ),
-        i18n: i18n.New(),
-        templates: template.New( "" ),
-    }
-}
-
-func PathHasPrefix( path, prefix string ) bool {
-    _, err := filepath.Rel( prefix, path )
-    return err == nil
+    vol := &Volume{}
+    vol.Reset()
+    return vol
 }
 
 // Getters
 
 func( vol *Volume ) Asset( path string ) ( *Asset, bool ) {
-    return vol.assets[path]
+    ast, ok := vol.assets[path]
+    return ast, ok
 }
 func( vol *Volume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
     lczr, err := i18n.NewLocalizer( vol.i18n, lcName )
@@ -31,12 +40,9 @@ func( vol *Volume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
     }
     return lczr, true
 }
-func( vol *Volume ) Template( path string ) ( *template.Template, bool ) {
-    tmpl := vol.templates.Lookup( path )
-    if tmpl == nil {
-        return nil, false
-    }
-    return tmpl, true
+func( vol *Volume ) Template( path string ) ( *Template, bool ) {
+    tmpl, ok := vol.templates[path]
+    return tmpl, ok
 }
 
 // General
@@ -53,7 +59,7 @@ func( vol *Volume ) ExecuteTemplate( path string, data interface{} ) ( string, e
     }
 
     // Read
-    buf := bytes.NewBuffer()
+    buf := bytes.NewBuffer( nil )
     err := tmpl.Execute( buf, data )
     if err != nil {
         return "", ErrTemplateExecError.Append( err )
@@ -64,9 +70,17 @@ func( vol *Volume ) ExecuteTemplate( path string, data interface{} ) ( string, e
 }
 
 func( vol *Volume ) Reset() {
+    rootTemplate := template.New( "" )
+
     vol.assets = make( map[string] *Asset )
     vol.i18n = i18n.New()
-    vol.templates = template.New( "" )
+    vol.rootTemplate = rootTemplate
+    vol.templates = map[string] *Template{
+        "": &Template{
+            Template: rootTemplate,
+            text: "",
+        },
+    }
 }
 
 // Importers
@@ -74,13 +88,13 @@ func( vol *Volume ) Reset() {
 func( vol *Volume ) PutItem( path string, rd io.Reader, modTime time.Time ) error {
 
     switch {
-    case PathHasPrefix( path, c_assetDirectory ):
+    case strings.HasPrefix( path, c_assetDirectory ):
         ast := NewAsset( filepath.Base( path ), rd, modTime )
         return vol.PutAsset( path, ast )
-    case PathHasPrefix( path, c_localeDirectory ):
+    case strings.HasPrefix( path, c_i18nDirectory ):
 
         // Read
-        buf := bytes.NewBuffer()
+        buf := bytes.NewBuffer( nil )
         io.Copy( buf, rd )
 
         // Parse
@@ -93,10 +107,10 @@ func( vol *Volume ) PutItem( path string, rd io.Reader, modTime time.Time ) erro
         // Assign
         return vol.PutLocale( lc )
 
-    case PathHasPrefix( path, c_templateDirectory ):
+    case strings.HasPrefix( path, c_templateDirectory ):
 
         // Read
-        buf := bytes.NewBuffer()
+        buf := bytes.NewBuffer( nil )
         io.Copy( buf, rd )
 
         // Add
@@ -113,7 +127,7 @@ func( vol *Volume ) PutAsset( path string, ast *Asset ) error {
     if _, ok := vol.assets[path]; ok {
         return ErrOccupiedPath.Append( path )
     }
-    if !PathHasPrefix( path, c_assetDirectory ) {
+    if !strings.HasPrefix( path, c_assetDirectory ) {
         return ErrInvalidPath.Append( path )
     }
     vol.assets[path] = ast
@@ -125,16 +139,27 @@ func( vol *Volume ) PutLocale( lc *i18n.Locale ) error {
 }
 
 func( vol *Volume ) PutTemplate( path string, text string ) error {
-    if _, err := vol.templates.Lookup( path ); err == nil {
+
+    // Check if exists
+    if tmpl := vol.rootTemplate.Lookup( path ); tmpl != nil {
         return ErrOccupiedPath.Append( path )
     }
-    if !PathHasPrefix( path, c_templateDirectory ) {
+
+    // Check path
+    if !strings.HasPrefix( path, c_templateDirectory ) {
         return ErrInvalidPath.Append( path )
     }
-    _, err := vol.templates.New( path ).Parse( text )
+
+    // Parse
+    tmpl, err := vol.rootTemplate.New( path ).Parse( text )
+    vol.templates[path] = &Template{
+        Template: tmpl,
+        text: text,
+    }
     if err != nil {
         ErrInvalidTemplate.Append( path, err )
     }
+
     return nil
 }
 
@@ -157,21 +182,27 @@ func( vol *Volume ) WalkFuncBasedOn( basePath string ) filepath.WalkFunc {
 
     return func( osPath string, fi os.FileInfo, err error ) error {
 
+        // Ignore dir
+        if fi.IsDir() {
+            return nil
+        }
+
         // Rel
         relPath, relErr := filepath.Rel( basePath, osPath )
         if relErr != nil {
             return ErrInvalidPath.Append( relErr, "basePath:", basePath, "osPath:", osPath )
         }
+        relPath = filepath.ToSlash( relPath )
 
         // Open
-        f, err := os.Open( relPath )
+        f, err := os.Open( osPath )
         if err != nil {
-            return ErrFileError.Append( relPath )
+            return ErrFileError.Append( osPath )
         }
 
-        // Add
+        // Add and ignore error
         err = vol.PutItem( relPath, f, fi.ModTime() )
-        if err != nil {
+        if !util.ErrorHasPrefix( err, ErrInvalidPath ) {
             return err
         }
 
@@ -189,7 +220,7 @@ func( vol *Volume ) WalkFuncBasedOn( basePath string ) filepath.WalkFunc {
 
 func( vol *Volume ) ImportZip( zr *zip.Reader ) error {
 
-    for fh := range zr.File {
+    for _, fh := range zr.File {
 
         // Open
         f, err := fh.Open()
@@ -205,6 +236,8 @@ func( vol *Volume ) ImportZip( zr *zip.Reader ) error {
 
     }
 
+    return nil
+
 }
 
 func( vol *Volume ) ExportZip( wr io.Writer ) error {
@@ -212,33 +245,32 @@ func( vol *Volume ) ExportZip( wr io.Writer ) error {
     zwr := zip.NewWriter( wr )
     exportFunc := func( exps []Exporter ) error {
         for _, exp := range exps {
-
             // Export
             err := exp.Export( zwr )
             if err != nil {
                 return ErrZipExport.Append( err )
             }
-
-            return nil
-
         }
+        return nil
     }
 
     // Assets
-    err := exportFunc( vol.assets )
+    astexp := &assetExporter{ vol.assets }
+    err := exportFunc( []Exporter{ astexp } )
     if err != nil {
         return err
     }
 
     // Locale
-    i1exp := i18nExporter{ vol.i18n }
-    err := exportFunc( []Exporter{ i1exp } )
+    i1exp := &i18nExporter{ vol.i18n }
+    err = exportFunc( []Exporter{ i1exp } )
     if err != nil {
         return err
     }
 
     // Templats
-    err := exportFunc( vol.templates )
+    tmplexp := &templateExporter{ vol.templates }
+    err = exportFunc( []Exporter{ tmplexp } )
     if err != nil {
         return err
     }

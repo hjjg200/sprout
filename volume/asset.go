@@ -1,5 +1,13 @@
 package volume
 
+import (
+    "bytes"
+    "crypto/md5"
+    "fmt"
+    "io"
+    "time"
+)
+
 type Asset struct {
     name string
     *bytes.Reader
@@ -16,23 +24,23 @@ type Asset struct {
  */
 
 func NewAsset( name string, r io.Reader, mt time.Time ) *Asset {
-    
+
     // Basics
     ast := &Asset{
         name: name,
         modTime: mt,
     }
-    
+
     // Version
     hash := md5.New()
-    hash.Write( []byte( fmt.Sprint( modTime.Unix() ) ) )
+    hash.Write( []byte( fmt.Sprint( mt.Unix() ) ) )
     ast.version = fmt.Sprintf( "%x", hash.Sum( nil ) )[:6]
-    
+
     // Data
-    buf := bytes.NewBuffer()
+    buf := bytes.NewBuffer( nil )
     io.Copy( buf, r )
     ast.Reader = bytes.NewReader( buf.Bytes() )
-    
+
     return ast
-    
+
 }

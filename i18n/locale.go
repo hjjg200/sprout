@@ -21,6 +21,11 @@ func NewLocale() ( *Locale ) {
 func( lc *Locale ) Name() string {
     return lc.name
 }
+
+func( lc *Locale ) Set() map[string] string {
+    return lc.set
+}
+
 //
 // {
 //    "locale-name": {
