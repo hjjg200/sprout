@@ -2,7 +2,6 @@ package volume
 
 import (
     "testing"
-    "path/filepath"
     "os"
 )
 
@@ -11,10 +10,8 @@ func Test1( t *testing.T ) {
     // /test/volume_test_01
 
     vol := NewVolume()
-    err := filepath.Walk( "../test/volume_test_01/volume", vol.WalkFuncBasedOn( "../test/volume_test_01/volume" ) )
-    if err != nil {
-        t.Error( err )
-    }
+    vol.ImportDirectory( "../test/volume_test_01/volume" )
+
     f, err := os.OpenFile(
         "../test/volume_test_01/export.zip",
         os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
@@ -23,11 +20,32 @@ func Test1( t *testing.T ) {
     if err != nil {
         t.Error( err )
     }
-    err = vol.ExportZip( f )
+    chc, err := vol.Export()
     if err != nil {
         t.Error( err )
     }
-
+    t.Log( len( chc.Files() ) )
+    f.Write( chc.Data() )
+    f.Close()
+    
     t.Log( vol.i18n.L( "en", "{% ab %}" ) )
 
+}
+
+func Test2( t *testing.T ) {
+    
+    css, err := CompileScss( `
+body {
+    div {
+        .white {
+            color: white;
+        }
+    }
+}
+` )
+    if err != nil {
+        t.Log( err )
+    }
+    t.Log( css )
+    
 }

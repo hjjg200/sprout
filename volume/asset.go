@@ -5,15 +5,16 @@ import (
     "crypto/md5"
     "fmt"
     "io"
+    "mime"
+    "path/filepath"
     "time"
 )
 
 type Asset struct {
-    name string
+    mimeType string
     *bytes.Reader
     modTime time.Time
     version string // first 6 letter of md5 hash of unix time string of modTime
-    body []byte
 }
 
 /*
@@ -27,8 +28,13 @@ func NewAsset( name string, r io.Reader, mt time.Time ) *Asset {
 
     // Basics
     ast := &Asset{
-        name: name,
+        mimeType: mime.TypeByExtension( filepath.Ext( name ) ),
         modTime: mt,
+    }
+
+    // Check mime
+    if ast.mimeType == "" {
+        ast.mimeType = "text/plain"
     }
 
     // Version

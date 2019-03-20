@@ -31,5 +31,6 @@ var (
     ErrAssetExport = util.NewError( 500, "unable to export the asset" )
     ErrI18nExport = util.NewError( 500, "unable to export the i18n instance" )
     ErrTemplateExport = util.NewError( 500, "unable to export the template" )
-
+    ErrCompileFailure = util.NewError( 500, "unable to compile the given source" )
+    
 )

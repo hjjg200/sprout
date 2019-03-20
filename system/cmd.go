@@ -2,13 +2,14 @@ package system
 
 import (
     "bytes"
+    "io"
     "os/exec"
     "runtime"
 
     "../util"
 )
 
-func makeExec( args ...string ) *exec.Cmd {
+func NewCmd( args ...string ) *exec.Cmd {
     switch runtime.GOOS {
     case "linux", "darwin":
         return exec.Command( "bash", append( []string{ "-c" }, args... )... )
@@ -18,49 +19,30 @@ func makeExec( args ...string ) *exec.Cmd {
     return nil
 }
 
-func Exec( args ...string ) error {
-
-    var (
-        stderr bytes.Buffer
-    )
+func Exec( stdin io.Reader, stdout, stderr io.Writer, args ...string ) error {
 
     // Set
-    e := makeExec( args... )
-    e.Stderr = &stderr
+    e := NewCmd( args... )
+    e.Stdin  = stdin
+    e.Stdout = stdout
+    
+    // Error writer
+    errbuf  := bytes.NewBuffer( nil )
+    writers := []io.Writer{ errbuf }
+    if stderr != nil {
+        writers = append( writers, stderr )
+    }
+    e.Stderr = io.MultiWriter( writers... )
 
     // Run
     err := e.Run()
 
     // Check err
     if err != nil {
-        return util.NewError( 500, err, stderr.String() )
+        return util.NewError( 500, err, errbuf.String() )
     }
 
     return nil
-
-}
-
-func ExecOutput( args ...string ) ( []byte, error ) {
-
-    var (
-        stderr bytes.Buffer
-        stdout bytes.Buffer
-    )
-
-    // Set
-    e := makeExec( args... )
-    e.Stderr = &stderr
-    e.Stdout = &stdout
-
-    // Run
-    err := e.Run()
-
-    // Check err
-    if err != nil {
-        return stdout.Bytes(), util.NewError( 500, err, stderr.String() )
-    }
-
-    return stdout.Bytes(), nil
 
 }
 

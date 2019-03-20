@@ -1,8 +1,8 @@
 package volume
 
 import (
-    "archive/zip"
     "bytes"
+    "encoding/json"
     "html/template"
     "io"
     "os"
@@ -10,6 +10,7 @@ import (
     "strings"
     "time"
 
+    "../cache"
     "../i18n"
     "../util"
 )
@@ -17,8 +18,7 @@ import (
 type Volume struct {
     assets map[string] *Asset
     i18n *i18n.I18n
-    rootTemplate *template.Template
-    templates map[string] *Template
+    templates *template.Template
 }
 
 func NewVolume() *Volume {
@@ -40,9 +40,11 @@ func( vol *Volume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
     }
     return lczr, true
 }
-func( vol *Volume ) Template( path string ) ( *Template, bool ) {
-    tmpl, ok := vol.templates[path]
-    return tmpl, ok
+func( vol *Volume ) Template( path string ) ( *template.Template, bool ) {
+    if tmpl := vol.templates.Lookup( path ); tmpl != nil {
+        return tmpl, true
+    }
+    return nil, false
 }
 
 // General
@@ -70,17 +72,9 @@ func( vol *Volume ) ExecuteTemplate( path string, data interface{} ) ( string, e
 }
 
 func( vol *Volume ) Reset() {
-    rootTemplate := template.New( "" )
-
-    vol.assets = make( map[string] *Asset )
-    vol.i18n = i18n.New()
-    vol.rootTemplate = rootTemplate
-    vol.templates = map[string] *Template{
-        "": &Template{
-            Template: rootTemplate,
-            text: "",
-        },
-    }
+    vol.assets    = make( map[string] *Asset )
+    vol.i18n      = i18n.New()
+    vol.templates = template.New( "" )
 }
 
 // Importers
@@ -141,7 +135,7 @@ func( vol *Volume ) PutLocale( lc *i18n.Locale ) error {
 func( vol *Volume ) PutTemplate( path string, text string ) error {
 
     // Check if exists
-    if tmpl := vol.rootTemplate.Lookup( path ); tmpl != nil {
+    if _, ok := vol.Template( path ); ok {
         return ErrOccupiedPath.Append( path )
     }
 
@@ -151,11 +145,7 @@ func( vol *Volume ) PutTemplate( path string, text string ) error {
     }
 
     // Parse
-    tmpl, err := vol.rootTemplate.New( path ).Parse( text )
-    vol.templates[path] = &Template{
-        Template: tmpl,
-        text: text,
-    }
+    _, err := vol.templates.New( path ).Parse( text )
     if err != nil {
         ErrInvalidTemplate.Append( path, err )
     }
@@ -180,7 +170,7 @@ func( vol *Volume ) ImportLocaleDirectory( osPath string ) error {
 
 func( vol *Volume ) ImportDirectory( path string ) error {
     vol.Reset()
-    return filepath.Walk( path, vol.WalkFuncBasedOn( path ) )
+    return filepath.Walk( path, vol.walkFuncBasedOn( path ) )
 }
 
 func( vol *Volume ) walkFuncBasedOn( basePath string ) filepath.WalkFunc {
@@ -223,20 +213,87 @@ func( vol *Volume ) walkFuncBasedOn( basePath string ) filepath.WalkFunc {
 
 }
 
-func( vol *Volume ) ImportZip( zr *zip.Reader ) error {
+// cache.Porter
+
+func( vol *Volume ) Export() ( *cache.Cache, error ) {
+    
+    chc  := cache.NewCache()
+    zero := time.Time{}
+    
+    // Asset
+    for path, ast := range vol.assets {
+        
+        w, err := chc.Create( path, ast.modTime )
+        if err != nil {
+            return nil, ErrAssetExport.Append( path, err )
+        }
+        ast.Seek( 0, io.SeekStart )
+        io.Copy( w, ast )
+        w.Close()
+        
+    }
+    
+    // i18n
+    for lcName, lc := range vol.i18n.Locales() {
+        
+        // Create
+        w, err := chc.Create( c_i18nDirectory + "/" + lcName + ".json", zero )
+        if err != nil {
+            return nil, ErrI18nExport.Append( lcName, err )
+        }
+        
+        // Json
+        jenc := json.NewEncoder( w )
+        lcMap := map[string] interface{} {
+            lcName: lc.Set(),
+        }
+        jenc.Encode( lcMap )
+        w.Close()
+        
+    }
+    
+    // Template
+    for _, tmpl := range vol.templates.Templates() {
+        
+        if tmpl.Name() == "" {
+            /*
+             *  Keep that in mind that text/template.Template.Templates() and html/template.Template.Templates() 
+             * work differently from each other. The html one includes itself while the other doesn't.
+             */
+            continue
+        }
+        
+        // Create
+        w, err := chc.Create( tmpl.Name(), zero )
+        if err != nil {
+            return nil, ErrTemplateExport.Append( tmpl.Name(), err )
+        }
+        
+        println( tmpl.Name() )
+        w.Write( []byte( tmpl.Tree.Root.String() ) )
+        w.Close()
+        
+    }
+    
+    chc.Flush()
+    return chc, nil
+    
+}
+
+func( vol *Volume ) Import( chc *cache.Cache ) error {
     
     vol.Reset()
 
-    for _, fh := range zr.File {
+    for _, f := range chc.Files() {
 
         // Open
-        f, err := fh.Open()
+        rc, err := f.Open()
         if err != nil {
-            return ErrZipImport.Append( fh.Name, err )
+            return ErrZipImport.Append( f.Name, err )
         }
 
         // Put
-        err = vol.PutItem( fh.Name, f, fh.Modified )
+        err = vol.PutItem( f.Name, rc, f.Modified )
         if err != nil {
             return ErrZipImport.Append( err )
         }
@@ -244,45 +301,5 @@ func( vol *Volume ) ImportZip( zr *zip.Reader ) error {
     }
 
     return nil
-
-}
-
-func( vol *Volume ) ExportZip( wr io.Writer ) error {
-
-    zwr := zip.NewWriter( wr )
-    exportFunc := func( exps []Exporter ) error {
-        for _, exp := range exps {
-            // Export
-            err := exp.Export( zwr )
-            if err != nil {
-                return ErrZipExport.Append( err )
-            }
-        }
-        return nil
-    }
-
-    // Assets
-    astexp := &assetExporter{ vol.assets }
-    err := exportFunc( []Exporter{ astexp } )
-    if err != nil {
-        return err
-    }
-
-    // Locale
-    i1exp := &i18nExporter{ vol.i18n }
-    err = exportFunc( []Exporter{ i1exp } )
-    if err != nil {
-        return err
-    }
-
-    // Templats
-    tmplexp := &templateExporter{ vol.templates }
-    err = exportFunc( []Exporter{ tmplexp } )
-    if err != nil {
-        return err
-    }
-
-    zwr.Close()
-    return nil
-
+    
 }
