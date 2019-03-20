@@ -25,12 +25,21 @@ func Test1( t *testing.T ) {
     chc.Flush()
 
     r, _ := chc.Files()[0].Open()
-    io.Copy( os.Stdout, r ); print( "\n" )
     r.Close()
     chc.Flush()
 
     create( "c.txt", "DDD" )
     create( "d.txt", "5345" )
+    chc.Flush()
+
+    files := chc.Files()
+    for _, f := range files {
+        print( f.Name )
+        print( " - " )
+        r, _ := f.Open()
+        io.Copy( os.Stdout, r ); print( "\n" )
+        r.Close()
+    }
     chc.Flush()
 
     f, _ := os.OpenFile( "../test/cache_test_01/a.zip", os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644 )
