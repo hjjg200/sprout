@@ -15,6 +15,7 @@ type Cache struct {
     hs   *together.HoldSwitch
     zrd  *zip.Reader
     zwr  *zip.Writer
+    mode int
 }
 
 func NewCache() *Cache {
@@ -25,6 +26,7 @@ func NewCache() *Cache {
         hs: nil,
         zrd: nil,
         zwr: nil,
+        mode: -1,
     }
 
     hs := together.NewHoldSwitch()
@@ -43,11 +45,6 @@ type entryWriter struct {
     wr io.Writer
 }
 
-type entryReadCloser struct {
-    parent *Cache
-    rc io.ReadCloser
-}
-
 func( ew *entryWriter ) Write( p []byte ) ( n int, err error ) {
     n, err = ew.wr.Write( p )
     return
@@ -56,6 +53,11 @@ func( ew *entryWriter ) Write( p []byte ) ( n int, err error ) {
 func( ew *entryWriter ) Close() error {
     ew.parent.hs.Done( switchWrite )
     return nil
+}
+
+type entryReadCloser struct {
+    parent *Cache
+    rc io.ReadCloser
 }
 
 func( er *entryReadCloser ) Read( p []byte ) ( n int, err error ) {
@@ -68,29 +70,65 @@ func( er *entryReadCloser ) Close() error {
     return er.rc.Close()
 }
 
-// Methods
+type entry struct {
+    file   *zip.File
+    parent *Cache
 
-func( chc *Cache ) Open( path string ) ( io.ReadCloser, error ) {
+    zip.FileHeader
+}
+
+func( e *entry ) Open() ( io.ReadCloser, error ) {
 
     // Hold
-    chc.hs.Add( switchRead, 1 ) // Close will call Done of HoldSwitch
+    e.parent.hs.Add( switchRead, 1 ) // Close will call Done of HoldSwitch
 
-    // Fetch
-    for _, f := range chc.zrd.File {
-        if f.Name == path {
-            rc, err := f.Open()
-            if err != nil {
-                return nil, ErrEntryAccessFailed.Append( path )
-            }
-            return &entryReadCloser{
-                rc: rc,
-                parent: chc,
-            }, nil
-        }
+    // Open
+    rc, err := e.file.Open()
+    if err != nil {
+        return nil, ErrEntryAccessFailed.Append( e.Name )
+    }
+    return &entryReadCloser{
+        rc: rc,
+        parent: e.parent,
+    }, nil
+
+}
+
+// Methods
+
+func( chc *Cache ) Flush() error {
+    if !chc.hs.IsEmpty() {
+        return chc.hs.Close()
+    }
+    return nil
+}
+
+func( chc *Cache ) Data() []byte {
+
+    // if writing return the buffer
+    if chc.mode == switchWrite {
+        chc.hs.WaitAll()
     }
 
-    // Error
-    return nil, ErrEntryNotFound.Append( path )
+    return chc.data
+
+}
+
+func( chc *Cache ) Files() []*entry {
+
+    // Hold
+    chc.hs.Add( switchRead, 1 )
+    defer chc.hs.Done( switchRead )
+
+    entries := make( []*entry, 0 )
+    for _, f := range chc.zrd.File {
+        entries = append( entries, &entry{
+            FileHeader: f.FileHeader,
+            file: f,
+            parent: chc,
+        } )
+    }
+    return entries
 
 }
 
@@ -117,18 +155,22 @@ func( chc *Cache ) Create( path string, mt time.Time ) ( io.WriteCloser, error )
 func( chc *Cache ) beginWrite() {
 
     // Begin Write
-    chc.buf = bytes.NewBuffer( nil )
-    chc.zwr = zip.NewWriter( chc.buf )
+    chc.mode = switchWrite
+    chc.buf  = bytes.NewBuffer( nil )
+    chc.zwr  = zip.NewWriter( chc.buf )
 
     // Read the previous content
     if len( chc.data ) > 0 {
-        brd    := bytes.NewReader( chc.data )
-        zrd, _ := zip.NewReader( brd, brd.Size() )
+        brd      := bytes.NewReader( chc.data )
+        zrd, err := zip.NewReader( brd, brd.Size() )
+        if err != nil {
+            panic( err )
+        }
 
         for _, f := range zrd.File {
 
             // File
-            r, err := f.Open()
+            rc, err := f.Open()
             if err != nil {
                 panic( err )
             }
@@ -138,7 +180,8 @@ func( chc *Cache ) beginWrite() {
             if err != nil {
                 panic( err )
             }
-            io.Copy( w, r )
+            io.Copy( w, rc )
+            rc.Close()
 
         }
     }
@@ -158,6 +201,7 @@ func( chc *Cache ) endWrite() {
 func( chc *Cache ) beginRead() {
 
     // Begin Read
+    chc.mode    = switchRead
     rd         := bytes.NewReader( chc.data )
     chc.zrd, _  = zip.NewReader( rd, rd.Size() )
 
