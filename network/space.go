@@ -1,10 +1,17 @@
 package network
 
+import (
+    "net/http"
+    "regexp"
+
+    "../volume"
+)
+
 type Space struct {
     name     string // domain
     aliases  []string
     handlers []Handler
-    volume   *Volume
+    volume   *volume.Volume
 }
 
 func NewSpace( name string ) *Space {
@@ -42,15 +49,15 @@ func( spc *Space ) SetHandlers( handlers []Handler ) {
     spc.handlers = handlers
 }
 
-func( spc *Space ) AddHandler( handler *Handler ) {
+func( spc *Space ) AddHandler( handler Handler ) {
     spc.handlers = append( spc.handlers, handler )
 }
 
-func( spc *Space ) Volume() *Volume {
+func( spc *Space ) Volume() *volume.Volume {
     return spc.volume
 }
 
-func( spc *Space ) SetVolume( vol *Volume ) {
+func( spc *Space ) SetVolume( vol *volume.Volume ) {
     spc.volume = vol
 }
 
@@ -64,8 +71,8 @@ func( spc *Space ) ServeRequest( req *Request ) {
 
     // Check locale with the space's i18n
     if spc.volume != nil {
-        if spc.volume.i18n != nil {
-            req.CheckLocale( spc.volume.i18n )
+        if spc.volume.I18n() != nil {
+            req.PopulateLocalizer( spc.volume.I18n() )
         }
     }
 
@@ -111,6 +118,19 @@ func( spc *Space ) WithHandler( hnd Handler ) {
 
 func( spc *Space ) WithReverseProxy( url string ) {}
 func( spc *Space ) WithSymlink( targetPath, linkPath string ) {}
-func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {}
+func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {
+
+    rgx, err := regexp.Compile( rgxStr )
+    spc.WithHandler( func( req *Request ) bool {
+        if rgx != nil && err == nil {
+            if rgx.MatchString( req.body.URL.Path ) {
+                hnd( req )
+                return true
+            }
+        }
+        return false
+    } )
+
+}
 func( spc *Space ) WithAssetServer() {}
-func( spc *Space ) WithAuthenticator( auther Authenticator ) {}
+func( spc *Space ) WithAuthenticator( auther func( req *Request ) bool ) {}

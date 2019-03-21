@@ -1,11 +1,24 @@
 package network
 
+import (
+    "bytes"
+    "html/template"
+    "io"
+    "mime"
+    "net/http"
+    "path/filepath"
+    "time"
+
+    "../volume"
+)
+
 type handlerFactory struct{}
 var HandlerFactory = &handlerFactory{}
 
-func( hf *HandlerFactory ) Asset( ast *Asset ) Handler {
+func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
 
-    buf := bytes.NewBuffer()
+    buf := bytes.NewBuffer( nil )
+    ast.Seek( 0, io.SeekStart )
     io.Copy( buf, ast )
 
     return func( req *Request ) bool {
@@ -14,7 +27,7 @@ func( hf *HandlerFactory ) Asset( ast *Asset ) Handler {
 
         // Localize
         if req.localizer != nil {
-            final = req.space.volume.i18n.L( req.locale, final )
+            final = req.localizer.L( final )
         }
 
         // Serve
@@ -25,17 +38,17 @@ func( hf *HandlerFactory ) Asset( ast *Asset ) Handler {
     }
 }
 
-func( hf *HandlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
+func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
     return func( req *Request ) bool {
 
         // Exec
-        buf := bytes.NewBuffer()
+        buf := bytes.NewBuffer( nil )
         tmpl.Execute( buf, dataFunc( req ) )
         final := buf.String()
 
         // Localize
         if req.localizer != nil {
-            final = req.space.volume.i18n.L( req.locale, final )
+            final = req.localizer.L( final )
         }
 
         // Serve
@@ -46,14 +59,14 @@ func( hf *HandlerFactory ) Template( tmpl *template.Template, dataFunc func( *Re
     }
 }
 
-func( hf *HandlerFactory ) Status( code int ) Handler {
-    return func( req *Reqeust ) bool {
+func( hf *handlerFactory ) Status( code int ) Handler {
+    return func( req *Request ) bool {
         req.WriteStatus( code )
         return true
     }
 }
 
-func( hf *HandlerFactory ) Authenticator( auther func( *Request ) bool, realm string ) Handler {
+func( hf *handlerFactory ) Authenticator( auther func( *Request ) bool, realm string ) Handler {
     return func( req *Request ) bool {
         if auther( req ) == true {
             // Returns false so that the following handlers can handle the request
@@ -67,7 +80,7 @@ func( hf *HandlerFactory ) Authenticator( auther func( *Request ) bool, realm st
     }
 }
 
-func( hf *HandlerFactory ) Text( text, name string ) Handler {
+func( hf *handlerFactory ) Text( text, name string ) Handler {
 
     mimeType := mime.TypeByExtension( filepath.Ext( name ) )
 
@@ -85,11 +98,11 @@ func( hf *HandlerFactory ) Text( text, name string ) Handler {
     }
 
 }
-
-func( hf *HandlerFactory ) File( osPath string ) Handler {
-
-}
-
-func( hf *HandlerFactory ) Directory( osPath string ) Handler {
+/*
+func( hf *handlerFactory ) File( osPath string ) Handler {
 
 }
+
+func( hf *handlerFactory ) Directory( osPath string ) Handler {
+
+}*/

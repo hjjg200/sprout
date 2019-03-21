@@ -46,6 +46,9 @@ func( vol *Volume ) Template( path string ) ( *template.Template, bool ) {
     }
     return nil, false
 }
+func( vol *Volume ) I18n() *i18n.I18n {
+    return vol.i18n
+}
 
 // General
 
@@ -195,9 +198,13 @@ func( vol *Volume ) walkFuncBasedOn( basePath string ) filepath.WalkFunc {
             return ErrFileError.Append( osPath )
         }
 
-        // Add and ignore error
+        // Add and ignore invalid path error
         err = vol.PutItem( relPath, f, fi.ModTime() )
-        if !util.ErrorHasPrefix( err, ErrInvalidPath ) {
+        if cast, ok := err.( util.Error ); ok {
+            if !cast.Is( ErrInvalidPath ) {
+                return err
+            }
+        } else {
             return err
         }
 
@@ -216,13 +223,13 @@ func( vol *Volume ) walkFuncBasedOn( basePath string ) filepath.WalkFunc {
 // cache.Porter
 
 func( vol *Volume ) Export() ( *cache.Cache, error ) {
-    
+
     chc  := cache.NewCache()
     zero := time.Time{}
-    
+
     // Asset
     for path, ast := range vol.assets {
-        
+
         w, err := chc.Create( path, ast.modTime )
         if err != nil {
             return nil, ErrAssetExport.Append( path, err )
@@ -230,18 +237,18 @@ func( vol *Volume ) Export() ( *cache.Cache, error ) {
         ast.Seek( 0, io.SeekStart )
         io.Copy( w, ast )
         w.Close()
-        
+
     }
-    
+
     // i18n
     for lcName, lc := range vol.i18n.Locales() {
-        
+
         // Create
         w, err := chc.Create( c_i18nDirectory + "/" + lcName + ".json", zero )
         if err != nil {
             return nil, ErrI18nExport.Append( lcName, err )
         }
-        
+
         // Json
         jenc := json.NewEncoder( w )
         lcMap := map[string] interface{} {
@@ -249,39 +256,39 @@ func( vol *Volume ) Export() ( *cache.Cache, error ) {
         }
         jenc.Encode( lcMap )
         w.Close()
-        
+
     }
-    
+
     // Template
     for _, tmpl := range vol.templates.Templates() {
-        
+
         if tmpl.Name() == "" {
             /*
-             *  Keep that in mind that text/template.Template.Templates() and html/template.Template.Templates() 
+             *  Keep that in mind that text/template.Template.Templates() and html/template.Template.Templates()
              * work differently from each other. The html one includes itself while the other doesn't.
              */
             continue
         }
-        
+
         // Create
         w, err := chc.Create( tmpl.Name(), zero )
         if err != nil {
             return nil, ErrTemplateExport.Append( tmpl.Name(), err )
         }
-        
+
         println( tmpl.Name() )
         w.Write( []byte( tmpl.Tree.Root.String() ) )
         w.Close()
-        
+
     }
-    
+
     chc.Flush()
     return chc, nil
-    
+
 }
 
 func( vol *Volume ) Import( chc *cache.Cache ) error {
-    
+
     vol.Reset()
 
     for _, f := range chc.Files() {
@@ -301,5 +308,5 @@ func( vol *Volume ) Import( chc *cache.Cache ) error {
     }
 
     return nil
-    
+
 }

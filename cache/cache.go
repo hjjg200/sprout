@@ -105,10 +105,8 @@ func( chc *Cache ) Flush() error {
 
 func( chc *Cache ) Data() []byte {
 
-    // if writing return the buffer
-    if chc.mode == switchWrite {
-        chc.hs.WaitAll()
-    }
+    chc.hs.Add( switchRead, 1 )
+    defer chc.hs.Done( switchRead )
 
     return chc.data
 

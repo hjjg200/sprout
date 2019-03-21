@@ -213,6 +213,10 @@ func( i1 *I18n ) Localizer( lcName string ) ( *Localizer, bool ) {
     return lczr, ok
 }
 
+func( i1 *I18n ) DefaultLocale() string {
+    return i1.defaultLocale
+}
+
 func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
     if len( lcName ) == 0 {
         return ErrInvalidParameter.Append( lcName )

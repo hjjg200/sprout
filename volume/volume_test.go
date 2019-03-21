@@ -24,16 +24,15 @@ func Test1( t *testing.T ) {
     if err != nil {
         t.Error( err )
     }
-    t.Log( len( chc.Files() ) )
     f.Write( chc.Data() )
     f.Close()
-    
+
     t.Log( vol.i18n.L( "en", "{% ab %}" ) )
 
 }
 
 func Test2( t *testing.T ) {
-    
+
     css, err := CompileScss( `
 body {
     div {
@@ -47,5 +46,5 @@ body {
         t.Log( err )
     }
     t.Log( css )
-    
+
 }

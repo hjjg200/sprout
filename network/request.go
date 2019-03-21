@@ -1,5 +1,12 @@
 package network
 
+import (
+    "net/http"
+    "strings"
+
+    "../i18n"
+)
+
 type Request struct {
     body      *http.Request
     writer    http.ResponseWriter
@@ -23,7 +30,7 @@ func( req *Request ) Body() *http.Request {
     return req.body
 }
 
-func( req *Reqeust ) Writer() http.ResponseWriter {
+func( req *Request ) Writer() http.ResponseWriter {
     return req.writer
 }
 
@@ -31,7 +38,7 @@ func( req *Request ) Localizer() *i18n.Localizer {
     return req.localizer
 }
 
-func( req *Request ) CheckLocale( i1 *i18n.I18n ) {
+func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
 
     // Check locale
     switch i1.NumLocale() {
@@ -39,9 +46,9 @@ func( req *Request ) CheckLocale( i1 *i18n.I18n ) {
     default:
         lcName, err := i1.ParseUrlPath( req.body.URL )
         if err != nil {
-            lcName, err := i1.ParseUrlQuery( req.body.URL )
-            if err != nil
-                lcName, err = i1.ParseCookies( req.body.Cookies )
+            lcName, err = i1.ParseUrlQuery( req.body.URL )
+            if err != nil {
+                lcName, err = i1.ParseCookies( req.body.Cookies() )
                 if err != nil {
                     lcName, err = i1.ParseAcceptLanguage( req.body.Header.Get( "accept-language" ) )
                     if err != nil {
@@ -67,5 +74,11 @@ func( req *Request ) CheckLocale( i1 *i18n.I18n ) {
     }
 
     req.localizer = nil
+
+}
+
+// Others
+
+func( req *Request ) WriteStatus( code int ) {
 
 }

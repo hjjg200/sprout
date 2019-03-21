@@ -11,6 +11,7 @@ import (
 )
 
 type Asset struct {
+    name string
     mimeType string
     *bytes.Reader
     modTime time.Time
@@ -28,6 +29,7 @@ func NewAsset( name string, r io.Reader, mt time.Time ) *Asset {
 
     // Basics
     ast := &Asset{
+        name: name,
         mimeType: mime.TypeByExtension( filepath.Ext( name ) ),
         modTime: mt,
     }
@@ -49,4 +51,16 @@ func NewAsset( name string, r io.Reader, mt time.Time ) *Asset {
 
     return ast
 
+}
+
+func( ast *Asset ) Name() string {
+    return ast.name
+}
+
+func( ast *Asset ) MimeType() string {
+    return ast.mimeType
+}
+
+func( ast *Asset ) ModTime() time.Time {
+    return ast.modTime
 }
