@@ -5,15 +5,15 @@ import (
     "os"
 )
 
-func Test1( t *testing.T ) {
+func TestVolume01( t *testing.T ) {
 
-    // /test/volume_test_01
+    // /test/TestVolume01
 
     vol := NewVolume()
-    vol.ImportDirectory( "../test/volume_test_01/volume" )
+    vol.ImportDirectory( "../test/TestVolume01/volume" )
 
     f, err := os.OpenFile(
-        "../test/volume_test_01/export.zip",
+        "../test/TestVolume01/export.zip",
         os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
         0644,
     )
@@ -31,7 +31,7 @@ func Test1( t *testing.T ) {
 
 }
 
-func Test2( t *testing.T ) {
+func TestVolume02( t *testing.T ) {
 
     css, err := CompileScss( `
 body {

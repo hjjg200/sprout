@@ -13,6 +13,16 @@ const (
 
 )
 
+const (
+
+    // Entry types
+    c_typeNull = -1 + iota
+    c_typeAsset
+    c_typeI18n
+    c_typeTemplate
+
+)
+
 var (
 
     // FLAGS
@@ -32,5 +42,5 @@ var (
     ErrI18nExport = util.NewError( 500, "unable to export the i18n instance" )
     ErrTemplateExport = util.NewError( 500, "unable to export the template" )
     ErrCompileFailure = util.NewError( 500, "unable to compile the given source" )
-    
+
 )

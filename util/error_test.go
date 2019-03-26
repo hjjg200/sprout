@@ -4,7 +4,7 @@ import (
     "testing"
 )
 
-func Test1( t *testing.T ) {
+func TestError01( t *testing.T ) {
 
     err := NewError( 500, "Error1" )
     err2 := NewError( 500, "error2" )

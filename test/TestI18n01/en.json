@@ -1,0 +1,11 @@
+{
+    "en-us": {
+        "abc": "THIS IS ABC",
+        "b": {
+            "person": "PERSON",
+            "def": {
+                "ghi": "Hello world!"
+            }
+        }
+    }
+}

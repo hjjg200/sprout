@@ -4,7 +4,7 @@ import (
     "testing"
 )
 
-func TestLog1( t *testing.T ) {
+func TestLogger01( t *testing.T ) {
     LogEnabled = true
     Logger.OKln( "hi", "OK" )
     Logger.Warnln( "warning!" )

@@ -8,6 +8,7 @@ import (
     "os"
     "path/filepath"
     "strings"
+    "sync"
     "time"
 
     "../cache"
@@ -84,11 +85,15 @@ func( vol *Volume ) Reset() {
 
 func( vol *Volume ) PutItem( path string, rd io.Reader, modTime time.Time ) error {
 
-    switch {
-    case strings.HasPrefix( path, c_assetDirectory ):
+    switch typeByPath( path ) {
+    case c_typeAsset:
+
+        // Add
         ast := NewAsset( filepath.Base( path ), rd, modTime )
-        return vol.PutAsset( path, ast )
-    case strings.HasPrefix( path, c_i18nDirectory ):
+        vol.putAsset( path, ast )
+        return nil
+
+    case c_typeI18n:
 
         // Read
         buf := bytes.NewBuffer( nil )
@@ -104,7 +109,7 @@ func( vol *Volume ) PutItem( path string, rd io.Reader, modTime time.Time ) erro
         // Assign
         return vol.PutLocale( lc )
 
-    case strings.HasPrefix( path, c_templateDirectory ):
+    case c_typeTemplate:
 
         // Read
         buf := bytes.NewBuffer( nil )
@@ -121,26 +126,27 @@ func( vol *Volume ) PutItem( path string, rd io.Reader, modTime time.Time ) erro
 }
 
 func( vol *Volume ) PutAsset( path string, ast *Asset ) error {
-    if _, ok := vol.assets[path]; ok {
-        return ErrOccupiedPath.Append( path )
-    }
     if !strings.HasPrefix( path, c_assetDirectory ) {
         return ErrInvalidPath.Append( path )
     }
-    vol.assets[path] = ast
+    vol.putAsset( path, ast )
     return nil
 }
 
+func( vol *Volume ) putAsset( path string, ast *Asset ) {
+    buf := make( map[string] *Asset )
+    for k, v := range vol.assets {
+        buf[k] = v
+    }
+    buf[path] = ast
+    vol.assets = buf
+}
+
 func( vol *Volume ) PutLocale( lc *i18n.Locale ) error {
-    return vol.i18n.AddLocale( lc )
+    return vol.i18n.PutLocale( lc )
 }
 
 func( vol *Volume ) PutTemplate( path string, text string ) error {
-
-    // Check if exists
-    if _, ok := vol.Template( path ); ok {
-        return ErrOccupiedPath.Append( path )
-    }
 
     // Check path
     if !strings.HasPrefix( path, c_templateDirectory ) {
@@ -154,6 +160,7 @@ func( vol *Volume ) PutTemplate( path string, text string ) error {
     }
 
     return nil
+
 }
 
 // Filesystem Related

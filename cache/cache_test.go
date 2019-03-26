@@ -7,7 +7,7 @@ import (
     "io"
 )
 
-func Test1( t *testing.T ) {
+func TestCache01( t *testing.T ) {
 
     chc := NewCache()
 

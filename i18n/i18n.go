@@ -73,10 +73,7 @@ func( i1 *I18n ) ImportDirectory( path string ) error {
         }
 
         // Assign
-        err = i1.AddLocale( lc )
-        if err != nil {
-            return err
-        }
+        i1.PutLocale( lc )
 
     }
 
@@ -153,7 +150,7 @@ func( i1 *I18n ) Localize( lcName, src string ) string {
         for key := range foundKeys {
             lcName, err := i1.ParseSingleLocale( lcName )
             if err != nil {
-                lcName =i1.defaultLocale
+                lcName = i1.defaultLocale
             }
             plc := i1.locales[lcName]
             if val, ok := plc.set[key]; ok {
@@ -185,18 +182,29 @@ func( i1 *I18n ) NumLocale() int {
     return len( i1.locales )
 }
 
-func( i1 *I18n ) AddLocale( locale *Locale ) error {
+func( i1 *I18n ) PutLocale( locale *Locale ) {
+
     // Set it as the default locale if it is the first locale
     if len( i1.locales ) == 0 {
         i1.defaultLocale = locale.name
     }
-    // Check if exists
-    if _, ok := i1.locales[locale.name]; ok {
-        return ErrLocaleExists.Append( locale.name )
+
+    // Put Locale
+    buf := make( map[string] *Locale )
+    for k, v := range i1.locales {
+        buf[k] = v
     }
-    i1.locales[locale.name] = locale
-    i1.localizers[locale.name], _ = NewLocalizer( i1, locale.name )
-    return nil
+    buf[locale.name] = locale
+    i1.locales = buf
+
+    // Put Localizer
+    buf2 := make( map[string] *Localizer )
+    for k, v := range i1.localizers {
+        buf2[k] = v
+    }
+    buf2[locale.name], _ = NewLocalizer( i1, locale.name )
+    i1.localizers = buf2
+
 }
 
 func( i1 *I18n ) Locale( lcName string ) ( *Locale, bool ) {
@@ -370,7 +378,7 @@ func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
 
     // Check if the lang exists
     split := strings.SplitN( lcName, "-", 2 )
-    if len( split ) == 2 {
+    if len( split ) >= 1 {
         for i := range i1.locales {
             if strings.HasPrefix( i, split[0] ) {
                 return i, nil
