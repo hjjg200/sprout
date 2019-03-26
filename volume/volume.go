@@ -179,7 +179,6 @@ func( vol *Volume ) ImportLocaleDirectory( osPath string ) error {
  */
 
 func( vol *Volume ) ImportDirectory( path string ) error {
-    vol.Reset()
     return filepath.Walk( path, vol.walkFuncBasedOn( path ) )
 }
 
