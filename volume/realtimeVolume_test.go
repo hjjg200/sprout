@@ -46,14 +46,14 @@ func TestRealtimeVolume01( t *testing.T ) {
 
     // Localizer
     write( testDir + "/" + "i18n/en.json", `{
-        "en": {
-            "ABC": "first"
-        }
-    }` )
+    "en": {
+        "ABC": "first"
+    }
+}` )
     lc, ok := rtv.Localizer( "en" )
-    println( rtv.I18n().HasLocale( "en" ) )
     if !ok {
         t.Error( "no localizer" )
+        fmt.Println( rtv.I18n().LocaleNames() )
         return
     }
     fmt.Println( lc.L( `{% ABC %}` ) )

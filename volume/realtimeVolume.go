@@ -10,7 +10,7 @@ import (
 )
 
 type RealtimeVolume struct {
-    vol *Volume
+    vol *BasicVolume
     srcPath string
     modTime map[string] time.Time
 }
@@ -19,7 +19,7 @@ type RealtimeVolume struct {
 
 func NewRealtimeVolume( srcPath string ) *RealtimeVolume {
     return &RealtimeVolume{
-        vol: NewVolume(),
+        vol: NewBasicVolume(),
         srcPath: srcPath,
         modTime: make( map[string] time.Time ),
     }
@@ -75,22 +75,31 @@ func( rtv *RealtimeVolume ) validateI18n() error {
 
 }
 
-func( rtv *RealtimeVolume ) walkAndValidate( path string ) {
+func( rtv *RealtimeVolume ) walkI18nDirectory() error {
 
-    // MkdirAll
+    i18nDir := rtv.abs( c_i18nDirectory )
+    
+    { // Ensure the i18n Directory
+        fi, err := os.Stat( i18nDir )
+        if err != nil {
+            return ErrDirectoryError.Append( i18nDir, err )
+        } else if !fi.IsDir() {
+            return ErrDirectoryError.Append( i18nDir, "it is not a directory" )
+        }
+    }
 
-    filepath.Walk( rtv.abs( path ), func( absPath string, fi os.FileInfo, err error ) error {
+    return filepath.Walk( i18nDir, func( absPath string, fi os.FileInfo, err error ) error {
 
         // Rel
         relPath, relErr := filepath.Rel( rtv.srcPath, absPath )
         if relErr != nil {
             return relErr
         }
-
-        //
         if fi.IsDir() {
             return nil
         }
+        
+        relPath = filepath.ToSlash( relPath )
 
         return rtv.validate( relPath )
 
@@ -116,21 +125,9 @@ func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
 
 func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
 
-    // Locate
-    path, ok := rtv.vol.localePath[lcName]
-    if !ok {
-        rtv.walkAndValidate( c_i18nDirectory )
-        path, ok = rtv.vol.localePath[lcName]
-        if !ok {
-            return nil, false
-        }
-    }
-
     // Valiate
-    err := rtv.validate( path )
-    if err != nil {
-        return nil, false
-    }
+    rtv.walkI18nDirectory()
+
     return rtv.vol.Localizer( lcName )
 
 }

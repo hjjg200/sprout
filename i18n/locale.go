@@ -4,17 +4,21 @@ import (
     "encoding/json"
     "reflect"
     "strings"
+    
+    "../util"
 )
 
 type Locale struct {
     name string
     set map[string] string
+    setMx *util.MapMutex
 }
 
 func NewLocale() ( *Locale ) {
     return &Locale{
         name: "",
         set: make( map[string] string ),
+        setMx: util.NewMapMutex(),
     }
 }
 
@@ -23,7 +27,17 @@ func( lc *Locale ) Name() string {
 }
 
 func( lc *Locale ) Set() map[string] string {
-    return lc.set
+    
+    // Copy
+    lc.setMx.BeginRead()
+    buf := make( map[string] string )
+    for k, v := range lc.set {
+        buf[k] = v
+    }
+    lc.setMx.EndRead()
+    
+    return buf
+    
 }
 
 //
@@ -48,6 +62,10 @@ func( lc *Locale ) ParseJson( data []byte ) error {
 }
 func( lc *Locale ) ParseMap( data interface{} ) error {
 
+    // Lock
+    lc.setMx.BeginWrite()
+    defer lc.setMx.EndWrite()
+    
     // Check the Language
     val := reflect.ValueOf( data )
         // There must be one key under the root
