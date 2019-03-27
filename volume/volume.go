@@ -8,7 +8,6 @@ import (
     "os"
     "path/filepath"
     "strings"
-    "sync"
     "time"
 
     "../cache"
@@ -19,6 +18,7 @@ import (
 type Volume struct {
     assets map[string] *Asset
     i18n *i18n.I18n
+    localePath map[string] string
     templates *template.Template
 }
 
@@ -34,19 +34,18 @@ func( vol *Volume ) Asset( path string ) ( *Asset, bool ) {
     ast, ok := vol.assets[path]
     return ast, ok
 }
+
 func( vol *Volume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
-    lczr, err := i18n.NewLocalizer( vol.i18n, lcName )
-    if err != nil {
-        return nil, false
-    }
-    return lczr, true
+    return vol.i18n.Localizer( lcName )
 }
+
 func( vol *Volume ) Template( path string ) ( *template.Template, bool ) {
     if tmpl := vol.templates.Lookup( path ); tmpl != nil {
         return tmpl, true
     }
     return nil, false
 }
+
 func( vol *Volume ) I18n() *i18n.I18n {
     return vol.i18n
 }
@@ -106,8 +105,17 @@ func( vol *Volume ) PutItem( path string, rd io.Reader, modTime time.Time ) erro
             return err
         }
 
+        // Path
+        buf2 := make( map[string] string )
+        for k, v := range vol.localePath {
+            buf2[k] = v
+        }
+        buf2[lc.Name()] = path
+        vol.localePath = buf2
+
         // Assign
-        return vol.PutLocale( lc )
+        vol.PutLocale( lc )
+        return nil
 
     case c_typeTemplate:
 
@@ -142,8 +150,8 @@ func( vol *Volume ) putAsset( path string, ast *Asset ) {
     vol.assets = buf
 }
 
-func( vol *Volume ) PutLocale( lc *i18n.Locale ) error {
-    return vol.i18n.PutLocale( lc )
+func( vol *Volume ) PutLocale( lc *i18n.Locale ) {
+    vol.i18n.PutLocale( lc )
 }
 
 func( vol *Volume ) PutTemplate( path string, text string ) error {
