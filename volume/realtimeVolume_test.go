@@ -62,12 +62,14 @@ func TestRealtimeVolume01( t *testing.T ) {
         "ABC": "second"
     }
 }` )
+    lc, ok = rtv.Localizer( "en" )
     fmt.Println( lc.L( `{% ABC %}` ) )
     write( testDir + "/" + "i18n/en.json", `{
     "en": {
         "ABC": "third"
     }
 }` )
+    lc, ok = rtv.Localizer( "en" )
     fmt.Println( lc.L( `{% ABC %}` ) )
 
 }

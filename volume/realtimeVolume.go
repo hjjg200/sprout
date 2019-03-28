@@ -7,6 +7,7 @@ import (
     "time"
 
     "../i18n"
+    "../cache"
 )
 
 type RealtimeVolume struct {
@@ -78,7 +79,7 @@ func( rtv *RealtimeVolume ) validateI18n() error {
 func( rtv *RealtimeVolume ) walkI18nDirectory() error {
 
     i18nDir := rtv.abs( c_i18nDirectory )
-    
+
     { // Ensure the i18n Directory
         fi, err := os.Stat( i18nDir )
         if err != nil {
@@ -98,7 +99,7 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
         if fi.IsDir() {
             return nil
         }
-        
+
         relPath = filepath.ToSlash( relPath )
 
         return rtv.validate( relPath )
@@ -116,7 +117,7 @@ func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset, bool ) {
 }
 
 func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
-    err := rtv.validateI18n()
+    err := rtv.walkI18nDirectory()
     if err != nil {
         return nil
     }
@@ -126,7 +127,15 @@ func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
 func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
 
     // Valiate
-    rtv.walkI18nDirectory()
+    rtv.vol.localePathMx.BeginRead()
+    path, ok := rtv.vol.localePath[lcName]
+    rtv.vol.localePathMx.EndRead()
+    if ok {
+        rtv.validate( path )
+    } else {
+        // Walk
+        rtv.walkI18nDirectory()
+    }
 
     return rtv.vol.Localizer( lcName )
 
@@ -138,4 +147,12 @@ func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template, bool )
         return nil, false
     }
     return rtv.vol.Template( path )
+}
+
+func( rtv *RealtimeVolume ) Export() ( *cache.Cache, error ) {
+    return nil, nil
+}
+
+func( rtv *RealtimeVolume ) Import( chc *cache.Cache ) error {
+    return nil
 }

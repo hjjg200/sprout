@@ -11,7 +11,7 @@ type Space struct {
     name     string // domain
     aliases  []string
     handlers []Handler
-    volume   *volume.Volume
+    volume   volume.Volume
 }
 
 func NewSpace( name string ) *Space {
@@ -53,11 +53,11 @@ func( spc *Space ) AddHandler( handler Handler ) {
     spc.handlers = append( spc.handlers, handler )
 }
 
-func( spc *Space ) Volume() *volume.Volume {
+func( spc *Space ) Volume() volume.Volume {
     return spc.volume
 }
 
-func( spc *Space ) SetVolume( vol *volume.Volume ) {
+func( spc *Space ) SetVolume( vol volume.Volume ) {
     spc.volume = vol
 }
 

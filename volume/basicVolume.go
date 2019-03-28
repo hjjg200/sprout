@@ -19,6 +19,7 @@ type BasicVolume struct {
     assets map[string] *Asset
     i18n *i18n.I18n
     localePath map[string] string
+    localePathMx *util.MapMutex
     templates *template.Template
 }
 
@@ -53,9 +54,11 @@ func( vol *BasicVolume ) I18n() *i18n.I18n {
 // General
 
 func( vol *BasicVolume ) Reset() {
-    vol.assets    = make( map[string] *Asset )
-    vol.i18n      = i18n.New()
-    vol.templates = template.New( "" )
+    vol.assets       = make( map[string] *Asset )
+    vol.i18n         = i18n.New()
+    vol.localePath   = make( map[string] string )
+    vol.localePathMx = util.NewMapMutex()
+    vol.templates    = template.New( "" )
 }
 
 // Importers
@@ -84,12 +87,9 @@ func( vol *BasicVolume ) PutItem( path string, rd io.Reader, modTime time.Time )
         }
 
         // Path
-        buf2 := make( map[string] string )
-        for k, v := range vol.localePath {
-            buf2[k] = v
-        }
-        buf2[lc.Name()] = path
-        vol.localePath = buf2
+        vol.localePathMx.BeginWrite()
+        vol.localePath[lc.Name()] = path
+        vol.localePathMx.EndWrite()
 
         // Assign
         vol.PutLocale( lc )
@@ -229,20 +229,27 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
     }
 
     // i18n
-    for lcName, path := range vol.localePath {
+    copy := make( map[string] string )
+    vol.localePathMx.BeginRead()
+    for k, v := range vol.localePath {
+        copy[k] = v
+    }
+    vol.localePathMx.EndRead()
+
+    for lcName, path := range copy {
 
         // Create
         w, err := chc.Create( path, zero )
         if err != nil {
             return nil, ErrI18nExport.Append( lcName, err )
         }
-        
+
         //
         lc, ok := vol.i18n.Locale( lcName )
         if !ok {
             return nil, ErrI18nExport.Append( lcName, "the locale is unavailable" )
         }
-        
+
         // Json
         jenc := json.NewEncoder( w )
         lcMap := map[string] interface{} {

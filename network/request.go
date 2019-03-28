@@ -67,7 +67,6 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
                 req.body.URL.Path += split[1]
             }
         }
-
         req.localizer, _ = i1.Localizer( lcName )
         return
 
