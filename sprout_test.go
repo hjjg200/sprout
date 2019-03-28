@@ -22,8 +22,12 @@ func TestSprout01( t *testing.T ) {
     tmpl, _ := space.Volume().Template( "template/index.html" )
     space.WithRoute( "^/(index.html?)?$", network.HandlerFactory.Template(
         tmpl, func( req *network.Request ) interface{} {
-           return map[string] string {
-               "hello": "HELLO WORLD",
+           return map[string] interface{} {
+               "hello": []string{
+                   "abc",
+                   "def",
+                   "ghi",
+               },
            }
         } ) )
     space.WithRoute( "^/stop$", func( req *network.Request ) bool {

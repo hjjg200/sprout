@@ -43,7 +43,11 @@ func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Re
 
         // Exec
         buf := bytes.NewBuffer( nil )
-        tmpl.Execute( buf, dataFunc( req ) )
+        err := tmpl.Execute( buf, dataFunc( req ) )
+        if err != nil {
+            return HandlerFactory.Status( 500 )( req )
+        }
+
         final := buf.String()
 
         // Localize

@@ -5,6 +5,10 @@
     </head>
     <body>
         <h1>Welcome to {% NAME %}</h1>
-        <p>{{ .hello }}</p>
+        <ul>
+        {{ range .hello }}
+        <li>{{ . }}</li>
+        {{ end }}
+        </ul>
     </body>
 </html>
