@@ -18,6 +18,8 @@ type Asset struct {
     version string // first 6 letter of md5 hash of unix time string of modTime
 }
 
+type AssetPtr *Asset
+
 /*
  + MakeAsset
  *
