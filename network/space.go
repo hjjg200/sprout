@@ -133,4 +133,28 @@ func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {
 
 }
 func( spc *Space ) WithAssetServer() {}
-func( spc *Space ) WithAuthenticator( auther func( req *Request ) bool ) {}
+
+func( spc *Space ) WithAsset( path string ) {
+    spc.WithHandler( func( req* Request ) bool {
+        ast, ok := spc.vol.Asset( path )
+        if !ok {
+            HandlerFactory.Status( 404 )( req )
+            return true
+        }
+        HandlerFactory.Asset( ast )( req )
+        return true
+    } )
+}
+func( spc *Space ) WithTemplate( path string, dataFunc func( *Request ) interface{} ) {
+    spc.WithHandler( func( req *Request ) bool {
+        tmpl, ok := spc.vol.Template( path )
+        if !ok {
+            HandlerFactory.Status( 404 )( req )
+            return true
+        }
+        HandlerFactory.Template( tmpl, dataFunc )( req )
+        return true
+    } )
+}
+
+func( spc *Space ) WithAuthenticator( auther func( *Request ) bool ) {}

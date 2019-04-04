@@ -21,7 +21,7 @@ func TestSprout01( t *testing.T ) {
     space.SetVolume( vol )
     tmpl, _ := space.Volume().Template( "template/index.html" )
     space.WithRoute( "^/(index.html?)?$", network.HandlerFactory.Template(
-        tmpl, func( req *network.Request ) interface{} {
+        "template/index.html", func( req *network.Request ) interface{} {
            return map[string] interface{} {
                "hello": []string{
                    "abc",

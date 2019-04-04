@@ -142,7 +142,7 @@ func( vol *BasicVolume ) PutTemplate( path string, text string ) error {
     // Parse
     _, err := vol.templates.New( path ).Parse( text )
     if err != nil {
-        ErrInvalidTemplate.Append( path, err )
+        return ErrInvalidTemplate.Append( path, err )
     }
 
     return nil
