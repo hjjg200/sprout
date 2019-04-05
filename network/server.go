@@ -69,11 +69,12 @@ func( srv *Server ) DisableTls() {
 func( srv *Server ) ServeRequest( req *Request ) {
     for _, spc := range srv.spaces {
         // Check
-        if spc.ContainsAlias( req.body.URL.Host ) {
-            spc.ServeRequest( req )
+        if spc.ContainsAlias( req.body.Host ) {
+            spc.serveRequest( req )
             return
         }
     }
+    req.WriteStatus( 404 )
 }
 
 func( srv *Server ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {

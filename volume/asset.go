@@ -13,7 +13,7 @@ import (
 type Asset struct {
     name string
     mimeType string
-    *bytes.Reader
+    bytes []byte
     modTime time.Time
     version string // first 6 letter of md5 hash of unix time string of modTime
 }
@@ -47,10 +47,14 @@ func NewAsset( name string, r io.Reader, mt time.Time ) *Asset {
     // Data
     buf := bytes.NewBuffer( nil )
     io.Copy( buf, r )
-    ast.Reader = bytes.NewReader( buf.Bytes() )
+    ast.bytes = buf.Bytes()
 
     return ast
 
+}
+
+func( ast *Asset ) Bytes() []byte {
+    return ast.bytes
 }
 
 func( ast *Asset ) Name() string {

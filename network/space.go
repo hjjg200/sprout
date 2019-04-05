@@ -2,6 +2,7 @@ package network
 
 import (
     "net/http"
+    "strings"
     "regexp"
 
     "../volume"
@@ -63,11 +64,17 @@ func( spc *Space ) SetVolume( vol volume.Volume ) {
 
 func( spc *Space ) ServeRequest( req *Request ) {
 
-    if !spc.ContainsAlias( req.body.URL.Host ) {
+    if !spc.ContainsAlias( req.body.Host ) {
         // Bad Request
         HandlerFactory.Status( 400 )( req )
         return
     }
+
+    spc.serveRequest( req )
+
+}
+
+func( spc *Space ) serveRequest( req *Request ) {
 
     // Check locale with the space's i18n
     if spc.volume != nil {
@@ -96,12 +103,15 @@ func( spc *Space ) ContainsAlias( alias string ) bool {
         return true
     }
 
+    // Split
+    split := strings.SplitN( alias, ":", 2 )
+
     // Compare
-    if spc.name == alias {
+    if spc.name == split[0] {
         return true
     }
     for _, val := range spc.aliases {
-        if val == alias {
+        if val == split[0] {
             return true
         }
     }
@@ -132,29 +142,18 @@ func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {
     } )
 
 }
-func( spc *Space ) WithAssetServer() {}
+func( spc *Space ) WithAssetServer( prefix string ) {
 
-func( spc *Space ) WithAsset( path string ) {
-    spc.WithHandler( func( req* Request ) bool {
-        ast, ok := spc.vol.Asset( path )
-        if !ok {
-            HandlerFactory.Status( 404 )( req )
-            return true
-        }
-        HandlerFactory.Asset( ast )( req )
-        return true
-    } )
-}
-func( spc *Space ) WithTemplate( path string, dataFunc func( *Request ) interface{} ) {
     spc.WithHandler( func( req *Request ) bool {
-        tmpl, ok := spc.vol.Template( path )
-        if !ok {
-            HandlerFactory.Status( 404 )( req )
-            return true
+        path := req.body.URL.Path
+        if strings.HasPrefix( path, prefix ) && len( path ) > len( prefix ) {
+            astPath := "asset/" + path[len( prefix ):]
+            return HandlerFactory.Asset( func() *volume.Asset {
+                ast, _ := spc.volume.Asset( astPath )
+                return ast
+            } )( req )
         }
-        HandlerFactory.Template( tmpl, dataFunc )( req )
-        return true
+        return false
     } )
-}
 
-func( spc *Space ) WithAuthenticator( auther func( *Request ) bool ) {}
+}

@@ -83,6 +83,10 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
 
 func( req *Request ) WriteStatus( code int ) {
 
+    // Set code
+    req.writer.WriteHeader( code )
+
+    // Content
     c   := fmt.Sprint( code )
     msg := util.HttpStatusMessages[code]
     t := `<!doctype html>

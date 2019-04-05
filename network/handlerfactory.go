@@ -3,7 +3,6 @@ package network
 import (
     "bytes"
     "html/template"
-    "io"
     "mime"
     "net/http"
     "path/filepath"
@@ -15,15 +14,16 @@ import (
 type handlerFactory struct{}
 var HandlerFactory = &handlerFactory{}
 
-func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
-
-    buf := bytes.NewBuffer( nil )
-    ast.Seek( 0, io.SeekStart )
-    io.Copy( buf, ast )
+func( hf *handlerFactory ) Asset( fn func() *volume.Asset ) Handler {
 
     return func( req *Request ) bool {
 
-        final := buf.String()
+        ast := fn()
+        if ast == nil {
+            return HandlerFactory.Status( 404 )( req )
+        }
+
+        final := string( ast.Bytes() )
 
         // Localize
         if req.localizer != nil {
@@ -36,10 +36,16 @@ func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
         return true
 
     }
+
 }
 
-func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
+func( hf *handlerFactory ) Template( fn func() *template.Template, dataFunc func( *Request ) interface{} ) Handler {
     return func( req *Request ) bool {
+
+        tmpl := fn()
+        if tmpl == nil {
+            return HandlerFactory.Status( 404 )( req )
+        }
 
         // Exec
         buf := bytes.NewBuffer( nil )
@@ -70,9 +76,12 @@ func( hf *handlerFactory ) Status( code int ) Handler {
     }
 }
 
-func( hf *handlerFactory ) Authenticator( auther func( *Request ) bool, realm string ) Handler {
+func( hf *handlerFactory ) BasicAuth( auther func( string, string ) bool, realm string ) Handler {
     return func( req *Request ) bool {
-        if auther( req ) == true {
+        // Id and pass
+        id, pw, ok := req.body.BasicAuth()
+
+        if ok && auther( id, pw ) == true {
             // Returns false so that the following handlers can handle the request
             return false
         }

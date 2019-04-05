@@ -16,11 +16,12 @@ import (
 )
 
 type BasicVolume struct {
-    assets map[string] *Asset
-    i18n *i18n.I18n
-    localePath map[string] string
-    localePathMx *util.MapMutex
-    templates *template.Template
+    assets         map[string] *Asset
+    i18n           *i18n.I18n
+    localePath     map[string] string
+    localePathMx   *util.MapMutex
+    templates      *template.Template
+    templatesClone *template.Template
 }
 
 func NewBasicVolume() *BasicVolume {
@@ -54,11 +55,12 @@ func( vol *BasicVolume ) I18n() *i18n.I18n {
 // General
 
 func( vol *BasicVolume ) Reset() {
-    vol.assets       = make( map[string] *Asset )
-    vol.i18n         = i18n.New()
-    vol.localePath   = make( map[string] string )
-    vol.localePathMx = util.NewMapMutex()
-    vol.templates    = template.New( "" )
+    vol.assets            = make( map[string] *Asset )
+    vol.i18n              = i18n.New()
+    vol.localePath        = make( map[string] string )
+    vol.localePathMx      = util.NewMapMutex()
+    vol.templates         = template.New( "" )
+    vol.templatesClone, _ = vol.templates.Clone()
 }
 
 // Importers
@@ -139,12 +141,14 @@ func( vol *BasicVolume ) PutTemplate( path string, text string ) error {
         return ErrInvalidPath.Append( path )
     }
 
-    // Parse
-    _, err := vol.templates.New( path ).Parse( text )
+    // Clone
+    _, err := vol.templatesClone.New( path ).Parse( text )
     if err != nil {
         return ErrInvalidTemplate.Append( path, err )
     }
 
+    buf, _ := vol.templatesClone.Clone()
+    vol.templates = buf
     return nil
 
 }
@@ -222,8 +226,7 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
         if err != nil {
             return nil, ErrAssetExport.Append( path, err )
         }
-        ast.Seek( 0, io.SeekStart )
-        io.Copy( w, ast )
+        w.Write( ast.Bytes() )
         w.Close()
 
     }
