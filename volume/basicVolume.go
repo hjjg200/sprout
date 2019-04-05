@@ -16,11 +16,11 @@ import (
 )
 
 type BasicVolume struct {
-    assets map[string] *AssetPtr
+    assets map[string] *Asset
     i18n *i18n.I18n
     localePath map[string] string
     localePathMx *util.MapMutex
-    templates *TemplatePtr
+    templates *template.Template
 }
 
 func NewBasicVolume() *BasicVolume {
@@ -31,17 +31,20 @@ func NewBasicVolume() *BasicVolume {
 
 // Getters
 
-func( vol *BasicVolume ) AssetPtr( path string ) ( *AssetPtr, bool ) {
-    astp, ok := vol.assets[path]
-    return astp, ok
+func( vol *BasicVolume ) Asset( path string ) ( *Asset, bool ) {
+    ast, ok := vol.assets[path]
+    return ast, ok
 }
 
 func( vol *BasicVolume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
     return vol.i18n.Localizer( lcName )
 }
 
-func( vol *BasicVolume ) TemplatePtr( path string ) ( *TemplatePtr, bool ) {
-    return vol.templates, true
+func( vol *BasicVolume ) Template( path string ) ( *template.Template, bool ) {
+    if tmpl := vol.templates.Lookup( path ); tmpl != nil {
+        return tmpl, true
+    }
+    return nil, false
 }
 
 func( vol *BasicVolume ) I18n() *i18n.I18n {
