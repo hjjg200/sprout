@@ -108,10 +108,10 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
 
 }
 
-func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset, bool ) {
+func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset ) {
     err := rtv.validate( path )
     if err != nil {
-        return nil, false
+        return nil
     }
     return rtv.vol.Asset( path )
 }
@@ -124,7 +124,7 @@ func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
     return rtv.vol.I18n()
 }
 
-func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
+func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
 
     // Valiate
     rtv.vol.localePathMx.BeginRead()
@@ -141,10 +141,10 @@ func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer, bool )
 
 }
 
-func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template, bool ) {
+func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template ) {
     err := rtv.validate( path )
     if err != nil {
-        return nil, false
+        return nil
     }
     return rtv.vol.Template( path )
 }

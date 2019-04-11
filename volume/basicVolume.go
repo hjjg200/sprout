@@ -32,20 +32,20 @@ func NewBasicVolume() *BasicVolume {
 
 // Getters
 
-func( vol *BasicVolume ) Asset( path string ) ( *Asset, bool ) {
-    ast, ok := vol.assets[path]
-    return ast, ok
+func( vol *BasicVolume ) Asset( path string ) ( *Asset ) {
+    ast := vol.assets[path]
+    return ast
 }
 
-func( vol *BasicVolume ) Localizer( lcName string ) ( *i18n.Localizer, bool ) {
+func( vol *BasicVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
     return vol.i18n.Localizer( lcName )
 }
 
-func( vol *BasicVolume ) Template( path string ) ( *template.Template, bool ) {
+func( vol *BasicVolume ) Template( path string ) ( *template.Template ) {
     if tmpl := vol.templates.Lookup( path ); tmpl != nil {
-        return tmpl, true
+        return tmpl
     }
-    return nil, false
+    return nil
 }
 
 func( vol *BasicVolume ) I18n() *i18n.I18n {

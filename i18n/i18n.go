@@ -11,7 +11,7 @@ import (
     "sort"
     "strconv"
     "strings"
-    
+
     "../util"
 )
 
@@ -95,7 +95,7 @@ func( i1 *I18n ) Localize( lcName, src string ) string {
     i1.localesMx.BeginRead()
     length := len( i1.locales )
     i1.localesMx.EndRead()
-    
+
     if length == 0 {
         return src
     }
@@ -162,11 +162,11 @@ func( i1 *I18n ) Localize( lcName, src string ) string {
             if err != nil {
                 lcName = i1.defaultLocale
             }
-            
+
             i1.localesMx.BeginRead()
             plc := i1.locales[lcName]
             i1.localesMx.EndRead()
-            
+
             if val, ok := plc.set[key]; ok {
                 src = strings.Replace(
                     src,
@@ -231,23 +231,23 @@ func( i1 *I18n ) Locale( lcName string ) ( *Locale, bool ) {
 }
 
 func( i1 *I18n ) LocaleNames() []string {
-    
+
     i1.localesMx.BeginRead()
     names := make( []string, 0 )
     for lcName := range i1.locales {
         names = append( names, lcName )
     }
     i1.localesMx.EndRead()
-    
+
     return names
-    
+
 }
 
-func( i1 *I18n ) Localizer( lcName string ) ( *Localizer, bool ) {
+func( i1 *I18n ) Localizer( lcName string ) ( *Localizer ) {
     i1.localizersMx.BeginRead()
-    lczr, ok := i1.localizers[lcName]
+    lczr := i1.localizers[lcName]
     i1.localizersMx.EndRead()
-    return lczr, ok
+    return lczr
 }
 
 func( i1 *I18n ) DefaultLocale() string {
@@ -255,12 +255,12 @@ func( i1 *I18n ) DefaultLocale() string {
 }
 
 func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
-    
+
     //
     if len( lcName ) == 0 {
         return ErrInvalidParameter.Append( lcName )
     }
-    
+
     //
     i1.localesMx.BeginRead()
     _, ok := i1.locales[lcName]
@@ -268,7 +268,7 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
     if !ok {
         return ErrLocaleNonExistent.Append( lcName )
     }
-    
+
     //
     i1.defaultLocale = lcName
     return nil

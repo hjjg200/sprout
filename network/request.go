@@ -14,6 +14,7 @@ type Request struct {
     body      *http.Request
     writer    http.ResponseWriter
     localizer *i18n.Localizer
+    vars      []string
 }
 
 func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
@@ -39,6 +40,10 @@ func( req *Request ) Writer() http.ResponseWriter {
 
 func( req *Request ) Localizer() *i18n.Localizer {
     return req.localizer
+}
+
+func( req *Request ) Vars() []string {
+    return req.vars
 }
 
 func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
@@ -70,7 +75,7 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
                 req.body.URL.Path += split[1]
             }
         }
-        req.localizer, _ = i1.Localizer( lcName )
+        req.localizer = i1.Localizer( lcName )
         return
 
     }

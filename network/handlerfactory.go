@@ -14,11 +14,10 @@ import (
 type handlerFactory struct{}
 var HandlerFactory = &handlerFactory{}
 
-func( hf *handlerFactory ) Asset( fn func() *volume.Asset ) Handler {
+func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
 
     return func( req *Request ) bool {
 
-        ast := fn()
         if ast == nil {
             return HandlerFactory.Status( 404 )( req )
         }
@@ -39,10 +38,9 @@ func( hf *handlerFactory ) Asset( fn func() *volume.Asset ) Handler {
 
 }
 
-func( hf *handlerFactory ) Template( fn func() *template.Template, dataFunc func( *Request ) interface{} ) Handler {
+func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
     return func( req *Request ) bool {
 
-        tmpl := fn()
         if tmpl == nil {
             return HandlerFactory.Status( 404 )( req )
         }

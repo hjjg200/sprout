@@ -8,14 +8,14 @@ import (
 )
 
 type Volume interface {
-    
+
     // Getters
-    Asset( string ) ( *Asset, bool )
+    Asset( string ) *Asset
     I18n() ( *i18n.I18n )
-    Localizer( string ) ( *i18n.Localizer, bool )
-    Template( string ) ( *template.Template, bool )
-    
+    Localizer( string ) *i18n.Localizer
+    Template( string ) *template.Template
+
     // cache.Porter
     cache.Porter
-    
+
 }

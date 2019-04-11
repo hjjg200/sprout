@@ -62,6 +62,18 @@ func( spc *Space ) SetVolume( vol volume.Volume ) {
     spc.volume = vol
 }
 
+// VOLUME-RELATED
+
+func( spc *Space ) AssetHandler( path string ) Handler {
+    return HandlerFactory.Asset( spc.volume.Asset( path ) )
+}
+
+func( spc *Space ) TemplateHandler( path string, dataFunc func( *Request ) interface{} ) Handler {
+    return HandlerFactory.Template( spc.volume.Template( path ), dataFunc )
+}
+
+// GENERAL
+
 func( spc *Space ) ServeRequest( req *Request ) {
 
     if !spc.ContainsAlias( req.body.Host ) {
@@ -133,7 +145,9 @@ func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {
     rgx, err := regexp.Compile( rgxStr )
     spc.WithHandler( func( req *Request ) bool {
         if rgx != nil && err == nil {
-            if rgx.MatchString( req.body.URL.Path ) {
+            matches := rgx.FindStringSubmatch( req.body.URL.Path )
+            if len( matches ) >= 1 {
+                req.vars = matches
                 hnd( req )
                 return true
             }
@@ -148,10 +162,7 @@ func( spc *Space ) WithAssetServer( prefix string ) {
         path := req.body.URL.Path
         if strings.HasPrefix( path, prefix ) && len( path ) > len( prefix ) {
             astPath := "asset/" + path[len( prefix ):]
-            return HandlerFactory.Asset( func() *volume.Asset {
-                ast, _ := spc.volume.Asset( astPath )
-                return ast
-            } )( req )
+            return HandlerFactory.Asset( spc.volume.Asset( astPath ) )( req )
         }
         return false
     } )
