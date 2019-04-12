@@ -6,28 +6,19 @@ import (
     "regexp"
 
     "../volume"
+    "../environ"
 )
 
 type Space struct {
-    name     string // domain
     aliases  []string
     handlers []Handler
     volume   volume.Volume
 }
 
-func NewSpace( name string ) *Space {
+func NewSpace() *Space {
     return &Space{
-        name: name,
         aliases: make( []string, 0 ),
     }
-}
-
-func( spc *Space ) Name() string {
-    return spc.name
-}
-
-func( spc *Space ) SetName( name string ) {
-    spc.name = name
 }
 
 func( spc *Space ) Aliases() []string {
@@ -95,11 +86,32 @@ func( spc *Space ) serveRequest( req *Request ) {
         }
     }
 
+    // Var
+    var (
+        status int
+    )
+
     // Handle
     for _, handler := range spc.handlers {
-        if handler( req ) {
+        if status = handler( req ); status != 100 {
             break
         }
+    }
+
+    // Args
+    args := []interface{}{
+        req.body.Method,
+        req.body.URL.Path,
+        req.body.Proto,
+        status,
+    }
+
+    // Log
+    switch {
+    case status >= 500 && status < 600:
+        environ.Logger.Warnln( args... )
+    default:
+        environ.Logger.OKln( args... )
     }
 
 }
@@ -110,20 +122,14 @@ func( spc *Space ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
 
 func( spc *Space ) ContainsAlias( alias string ) bool {
 
-    // Empty name
-    if spc.name == "" && len( spc.aliases ) == 0 {
+    // Empty aliases
+    if len( spc.aliases ) == 0 {
         return true
     }
-
-    // Split
-    split := strings.SplitN( alias, ":", 2 )
 
     // Compare
-    if spc.name == split[0] {
-        return true
-    }
     for _, val := range spc.aliases {
-        if val == split[0] {
+        if val == alias {
             return true
         }
     }
@@ -140,31 +146,36 @@ func( spc *Space ) WithHandler( hnd Handler ) {
 
 func( spc *Space ) WithReverseProxy( url string ) {}
 func( spc *Space ) WithSymlink( targetPath, linkPath string ) {}
-func( spc *Space ) WithRoute( rgxStr string, hnd Handler ) {
+func( spc *Space ) WithRoute( rgxStr string, fl int, hnd Handler ) {
 
     rgx, err := regexp.Compile( rgxStr )
-    spc.WithHandler( func( req *Request ) bool {
-        if rgx != nil && err == nil {
+    checker  := MakeMethodChecker( fl )
+
+    spc.WithHandler( func( req *Request ) int {
+
+        if rgx != nil && err == nil && checker[req.body.Method] {
+
             matches := rgx.FindStringSubmatch( req.body.URL.Path )
             if len( matches ) >= 1 {
                 req.vars = matches
-                hnd( req )
-                return true
+                return hnd( req )
             }
+
         }
-        return false
+        return 100
+
     } )
 
 }
 func( spc *Space ) WithAssetServer( prefix string ) {
 
-    spc.WithHandler( func( req *Request ) bool {
+    spc.WithHandler( func( req *Request ) int {
         path := req.body.URL.Path
         if strings.HasPrefix( path, prefix ) && len( path ) > len( prefix ) {
             astPath := "asset/" + path[len( prefix ):]
             return HandlerFactory.Asset( spc.volume.Asset( astPath ) )( req )
         }
-        return false
+        return 100
     } )
 
 }

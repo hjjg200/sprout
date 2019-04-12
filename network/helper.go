@@ -4,18 +4,6 @@ import (
     "net/http"
 )
 
-const (
-    MethodGet = 1 << iota
-    MethodHead
-    MethodPost
-    MethodPut
-    MethodPatch
-    MethodDelete
-    MethodConnect
-    MethodOptions
-    MethodTrace
-)
-
 func MakeMethodChecker( mflag int ) map[string] bool {
 
     fl := make( map[string] bool )

@@ -2,8 +2,10 @@ package network
 
 import (
     "context"
+    "fmt"
     "net"
     "net/http"
+    "strings"
 )
 
 type Server struct {
@@ -29,6 +31,10 @@ func( srv *Server ) Addr() string {
 
 func( srv *Server ) SetAddr( addr string ) {
     srv.addr = addr
+}
+
+func( srv *Server ) SetPort( port int16 ) {
+    srv.addr = fmt.Sprintf( ":%d", port )
 }
 
 func( srv *Server ) Body() *http.Server {
@@ -68,8 +74,9 @@ func( srv *Server ) DisableTls() {
 
 func( srv *Server ) ServeRequest( req *Request ) {
     for _, spc := range srv.spaces {
-        // Check
-        if spc.ContainsAlias( req.body.Host ) {
+        // Check host
+        split := strings.SplitN( req.body.Host, ":", 2 )
+        if spc.ContainsAlias( split[0] ) {
             spc.serveRequest( req )
             return
         }

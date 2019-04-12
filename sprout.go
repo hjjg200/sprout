@@ -1,13 +1,22 @@
 package sprout
 
 import (
+    "strings"
+
     "./network"
-    "./util"
+    "./environ"
 )
 
 type Sprout struct {
     servers []*network.Server
-    logger  *util.Logger
+}
+
+func init() {
+    environ.Logger.OKln(
+        strings.ToUpper( environ.AppName ),
+        environ.AppVersion,
+        "READY TO GO",
+    )
 }
 
 func New() *Sprout {
@@ -15,7 +24,6 @@ func New() *Sprout {
     //
     return &Sprout{
         servers: make( []*network.Server, 0 ),
-        logger: util.NewLogger(),
     }
 
 }
@@ -40,7 +48,7 @@ func( sprt *Sprout ) StartAll() {
     for _, srv := range sprt.servers {
         err := srv.Start()
         if err != nil {
-            sprt.logger.Warnln( err )
+            environ.Logger.Warnln( err )
         }
     }
 }
@@ -49,7 +57,7 @@ func( sprt *Sprout ) StopAll() {
     for _, srv := range sprt.servers {
         err := srv.Stop()
         if err != nil {
-            sprt.logger.Warnln( err )
+            environ.Logger.Warnln( err )
         }
     }
 }

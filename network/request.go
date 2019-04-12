@@ -8,6 +8,7 @@ import (
 
     "../i18n"
     "../util"
+    "../environ"
 )
 
 type Request struct {
@@ -134,7 +135,7 @@ func( req *Request ) WriteStatus( code int ) {
         <div>
             <h1>` + c + `</h1>
             <h3>` + msg + `</h3>
-            <footer>sprout<br />on ` + runtime.GOOS + `</footer>
+            <footer>` + environ.AppName + " " + environ.AppVersion + `<br />on ` + runtime.GOOS + `</footer>
         </div>
     </body>
 </html>`
