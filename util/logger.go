@@ -13,21 +13,11 @@ type Logger struct{
 }
 
 var (
-    LogTimeFormat = "15:04:05"
     logStartTime time.Time
-)
-
-const (
-    LogTimeTypeDefault = iota
-    LogTimeTypeSeconds
 )
 
 func init() {
     logStartTime = time.Now()
-}
-
-func formattedTime() string {
-    return time.Now().Format( LogTimeFormat )
 }
 
 func secondsFromStart() string {
@@ -45,12 +35,7 @@ func( lgr *Logger ) print( prefix string, args ...interface{} ) {
     if lgr.w != nil {
 
         out := prefix + " "
-        switch lgr.timeType {
-        case LogTimeTypeDefault:
-            out += formattedTime()
-        case LogTimeTypeSeconds:
-            out += secondsFromStart()
-        }
+        out += secondsFromStart()
         out += " - "
 
         for i := range args {

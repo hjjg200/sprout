@@ -2,21 +2,14 @@ package sprout
 
 import (
     "strings"
-
+    "time"
+    
     "./network"
     "./environ"
 )
 
 type Sprout struct {
     servers []*network.Server
-}
-
-func init() {
-    environ.Logger.OKln(
-        strings.ToUpper( environ.AppName ),
-        environ.AppVersion,
-        "READY TO GO",
-    )
 }
 
 func New() *Sprout {
@@ -45,12 +38,21 @@ func( sprt *Sprout ) AddServer( srv *network.Server ) {
 // General
 
 func( sprt *Sprout ) StartAll() {
+    
+    environ.Logger.OKln(
+        strings.ToUpper( environ.AppName ),
+        environ.AppVersion,
+        "UP AND RUNNING SINCE",
+        time.Now().Unix(),
+    )
+    
     for _, srv := range sprt.servers {
         err := srv.Start()
         if err != nil {
             environ.Logger.Warnln( err )
         }
     }
+
 }
 
 func( sprt *Sprout ) StopAll() {

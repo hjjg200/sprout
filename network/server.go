@@ -82,6 +82,7 @@ func( srv *Server ) ServeRequest( req *Request ) {
         }
     }
     req.WriteStatus( 404 )
+    req.Close( 404 )
 }
 
 func( srv *Server ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {

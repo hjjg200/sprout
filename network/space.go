@@ -6,7 +6,6 @@ import (
     "regexp"
 
     "../volume"
-    "../environ"
 )
 
 type Space struct {
@@ -86,32 +85,11 @@ func( spc *Space ) serveRequest( req *Request ) {
         }
     }
 
-    // Var
-    var (
-        status int
-    )
-
     // Handle
     for _, handler := range spc.handlers {
-        if status = handler( req ); status != 100 {
+        if handler( req ); req.Closed() {
             break
         }
-    }
-
-    // Args
-    args := []interface{}{
-        req.body.Method,
-        req.body.URL.Path,
-        req.body.Proto,
-        status,
-    }
-
-    // Log
-    switch {
-    case status >= 500 && status < 600:
-        environ.Logger.Warnln( args... )
-    default:
-        environ.Logger.OKln( args... )
     }
 
 }
@@ -151,7 +129,7 @@ func( spc *Space ) WithRoute( rgxStr string, fl int, hnd Handler ) {
     rgx, err := regexp.Compile( rgxStr )
     checker  := MakeMethodChecker( fl )
 
-    spc.WithHandler( func( req *Request ) int {
+    spc.WithHandler( func( req *Request ) bool {
 
         if rgx != nil && err == nil && checker[req.body.Method] {
 
@@ -162,20 +140,20 @@ func( spc *Space ) WithRoute( rgxStr string, fl int, hnd Handler ) {
             }
 
         }
-        return 100
+        return false
 
     } )
 
 }
 func( spc *Space ) WithAssetServer( prefix string ) {
 
-    spc.WithHandler( func( req *Request ) int {
+    spc.WithHandler( func( req *Request ) bool {
         path := req.body.URL.Path
         if strings.HasPrefix( path, prefix ) && len( path ) > len( prefix ) {
             astPath := "asset/" + path[len( prefix ):]
             return HandlerFactory.Asset( spc.volume.Asset( astPath ) )( req )
         }
-        return 100
+        return false
     } )
 
 }

@@ -13,7 +13,9 @@ import (
 
 type Request struct {
     body      *http.Request
+    closed    bool
     writer    http.ResponseWriter
+    header    Header
     localizer *i18n.Localizer
     vars      []string
 }
@@ -25,6 +27,12 @@ func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
         body: r,
         writer: w,
     }
+    
+    // Header
+    req.header = Header{
+        body: w.Header(),
+        req: req,
+    }
 
     // return
     return req
@@ -35,8 +43,50 @@ func( req *Request ) Body() *http.Request {
     return req.body
 }
 
-func( req *Request ) Writer() http.ResponseWriter {
-    return req.writer
+func( req *Request ) ensureOpen() {
+    if req.closed {
+        environ.Logger.Panicln( ErrRequestClosed )
+    }
+}
+
+func( req *Request ) Write( p []byte ) ( int, error ) {
+    req.ensureOpen()
+    return req.writer.Write( p )
+}
+
+func( req *Request ) Header() Header {
+    req.ensureOpen()
+    return req.header
+}
+
+func( req *Request ) Closed() bool {
+    return req.closed
+}
+
+func( req *Request ) Close( status int ) error {
+    
+    req.ensureOpen()
+    req.closed = true
+    req.writer.WriteHeader( status )
+    
+    // Args
+    args := []interface{}{
+        req.body.Method,
+        req.body.Host + req.body.URL.Path,
+        req.body.Proto,
+        status,
+    }
+
+    // Log
+    switch {
+    case status >= 500:
+        environ.Logger.Warnln( args... )
+    default:
+        environ.Logger.OKln( args... )
+    }
+    
+    return nil
+    
 }
 
 func( req *Request ) Localizer() *i18n.Localizer {
@@ -89,9 +139,6 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
 
 func( req *Request ) WriteStatus( code int ) {
 
-    // Set code
-    req.writer.WriteHeader( code )
-
     // Content
     c   := fmt.Sprint( code )
     msg := util.HttpStatusMessages[code]
@@ -140,6 +187,6 @@ func( req *Request ) WriteStatus( code int ) {
     </body>
 </html>`
 
-    req.writer.Write( []byte( t ) )
+    req.Write( []byte( t ) )
 
 }

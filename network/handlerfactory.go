@@ -16,7 +16,7 @@ var HandlerFactory = &handlerFactory{}
 
 func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
 
-    return func( req *Request ) int {
+    return func( req *Request ) bool {
 
         if ast == nil {
             return HandlerFactory.Status( 404 )( req )
@@ -32,14 +32,15 @@ func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
         // Serve
         rdskr := bytes.NewReader( []byte( final ) )
         http.ServeContent( req.writer, req.body, ast.Name(), ast.ModTime(), rdskr )
-        return 200
+        req.Close( 200 )
+        return true
 
     }
 
 }
 
 func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
-    return func( req *Request ) int {
+    return func( req *Request ) bool {
 
         if tmpl == nil {
             return HandlerFactory.Status( 404 )( req )
@@ -60,31 +61,33 @@ func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Re
         }
 
         // Serve
-        req.writer.Header().Set( "content-type", "text/html;charset=utf-8" )
-        req.writer.Write( []byte( final ) )
-        return 200
+        req.Header().Set( "content-type", "text/html;charset=utf-8" )
+        req.Write( []byte( final ) )
+        req.Close( 200 )
+        return true
 
     }
 }
 
 func( hf *handlerFactory ) Status( code int ) Handler {
-    return func( req *Request ) int {
+    return func( req *Request ) bool {
         req.WriteStatus( code )
-        return code
+        req.Close( code )
+        return true
     }
 }
 
 func( hf *handlerFactory ) BasicAuth( auther func( string, string ) bool, realm string ) Handler {
-    return func( req *Request ) int {
+    return func( req *Request ) bool {
         // Id and pass
         id, pw, ok := req.body.BasicAuth()
 
         if ok && auther( id, pw ) == true {
             // Returns false so that the following handlers can handle the request
-            return 100
+            return false
         }
         // Set the authentication realm
-        req.writer.Header().Set( "WWW-Authenticate", "Basic realm=\"" + realm + "\"" )
+        req.Header().Set( "WWW-Authenticate", "Basic realm=\"" + realm + "\"" )
 
         // Returns the 401 handler
         return HandlerFactory.Status( 401 )( req )
@@ -95,16 +98,17 @@ func( hf *handlerFactory ) Text( text, name string ) Handler {
 
     mimeType := mime.TypeByExtension( filepath.Ext( name ) )
 
-    return func( req *Request ) int {
+    return func( req *Request ) bool {
 
         // Set
-        req.writer.Header().Set( "content-type", mimeType + ";charset=utf-8" )
+        req.Header().Set( "content-type", mimeType + ";charset=utf-8" )
 
         // Serve
         rdskr := bytes.NewReader( []byte( text ) )
         http.ServeContent( req.writer, req.body, name, time.Now(), rdskr )
 
-        return 200
+        req.Close( 200 )
+        return true
 
     }
 

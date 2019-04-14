@@ -3,14 +3,8 @@ package sprout
 import (
     "./network"
     "./volume"
-    "./util"
-    "./environ"
     "testing"
 )
-
-func init() {
-    environ.Logger.SetTimeType( util.LogTimeTypeSeconds )
-}
 
 func TestSprout01( t *testing.T ) {
 
@@ -48,9 +42,9 @@ func TestSprout01( t *testing.T ) {
             }
         },
     ) )
-    space.WithRoute( "^/stop$", network.MethodGet, func( req *network.Request ) int {
+    space.WithRoute( "^/stop$", network.MethodGet, func( req *network.Request ) bool {
         srv.Stop()
-        return 200
+        return true
     } )
     space.WithRoute( "^/error$", network.MethodGet, network.HandlerFactory.Status( 500 ) )
     space.WithAssetServer( "/asset/" )
