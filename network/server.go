@@ -5,7 +5,6 @@ import (
     "fmt"
     "net"
     "net/http"
-    "strings"
 )
 
 type Server struct {
@@ -75,14 +74,12 @@ func( srv *Server ) DisableTls() {
 func( srv *Server ) ServeRequest( req *Request ) {
     for _, spc := range srv.spaces {
         // Check host
-        split := strings.SplitN( req.body.Host, ":", 2 )
-        if spc.ContainsAlias( split[0] ) {
+        if spc.ContainsHost( req.body.Host ) {
             spc.serveRequest( req )
             return
         }
     }
-    req.WriteStatus( 404 )
-    req.Close( 404 )
+    HandlerFactory.Status( 404 )( req )
 }
 
 func( srv *Server ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {

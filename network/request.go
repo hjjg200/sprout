@@ -1,13 +1,12 @@
 package network
 
 import (
-    "fmt"
+    "io"
     "net/http"
     "strings"
-    "runtime"
+    "time"
 
     "../i18n"
-    "../util"
     "../environ"
 )
 
@@ -15,7 +14,6 @@ type Request struct {
     body      *http.Request
     closed    bool
     writer    http.ResponseWriter
-    header    Header
     localizer *i18n.Localizer
     vars      []string
 }
@@ -27,12 +25,6 @@ func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
         body: r,
         writer: w,
     }
-    
-    // Header
-    req.header = Header{
-        body: w.Header(),
-        req: req,
-    }
 
     // return
     return req
@@ -43,50 +35,33 @@ func( req *Request ) Body() *http.Request {
     return req.body
 }
 
-func( req *Request ) ensureOpen() {
-    if req.closed {
-        environ.Logger.Panicln( ErrRequestClosed )
-    }
+func( req *Request ) Header() http.Header {
+    return req.writer.Header()
 }
 
-func( req *Request ) Write( p []byte ) ( int, error ) {
-    req.ensureOpen()
-    return req.writer.Write( p )
+func( req *Request ) setStatus( code int ) {
+    req.writer.WriteHeader( code )
+    req.logStatus( code )
 }
 
-func( req *Request ) Header() Header {
-    req.ensureOpen()
-    return req.header
-}
+func( req *Request ) logStatus( code int ) {
 
-func( req *Request ) Closed() bool {
-    return req.closed
-}
-
-func( req *Request ) Close( status int ) error {
-    
-    req.ensureOpen()
-    req.closed = true
-    req.writer.WriteHeader( status )
-    
     // Args
     args := []interface{}{
         req.body.Method,
         req.body.Host + req.body.URL.Path,
         req.body.Proto,
-        status,
+        code,
     }
 
     // Log
     switch {
-    case status >= 500:
+    case code >= 500:
         environ.Logger.Warnln( args... )
     default:
         environ.Logger.OKln( args... )
     }
-    
-    return nil
-    
+
 }
 
 func( req *Request ) Localizer() *i18n.Localizer {
@@ -135,58 +110,32 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
 
 }
 
-// Others
+// Respond
 
-func( req *Request ) WriteStatus( code int ) {
+func( req *Request ) Responder( code int ) http.ResponseWriter {
+    req.setStatus( code )
+    return req.writer
+}
 
-    // Content
-    c   := fmt.Sprint( code )
-    msg := util.HttpStatusMessages[code]
-    t := `<!doctype html>
-<html>
-    <head>
-        <title>` + c + " " + msg + `</title>
-        <style>
-            html {
-                font-family: sans-serif;
-                line-height: 1.0;
-                padding: 0;
-            }
-            body {
-                color: hsl( 220, 5%, 45% );
-                text-align: center;
-                padding: 10px;
-                margin: 0;
-            }
-            div {
-                border: 1px dashed hsl( 220, 5%, 88% );
-                padding: 20px;
-                margin: 0 auto;
-                max-width: 300px;
-                text-align: left;
-            }
-            h1, h2, h3 {
-                display: block;
-                margin: 0 0 5px 0;
-            }
-            footer {
-                color: hsl( 220, 5%, 68% );
-                font-family: monospace;
-                font-size: 1em;
-                text-align: right;
-                line-height: 1.3;
-            }
-        </style>
-    </head>
-    <body>
-        <div>
-            <h1>` + c + `</h1>
-            <h3>` + msg + `</h3>
-            <footer>` + environ.AppName + " " + environ.AppVersion + `<br />on ` + runtime.GOOS + `</footer>
-        </div>
-    </body>
-</html>`
+func( req *Request ) Respond( code int, content string ) {
+    req.RespondContent( code, "text/html;charset=utf-8", content )
+}
 
-    req.Write( []byte( t ) )
+func( req *Request ) RespondContent( code int, mimeType, content string ) {
+    req.setStatus( code )
+    req.writer.Header().Set( "content-type", mimeType )
+    req.writer.Write( []byte( content ) )
+}
 
+func( req *Request ) RespondText( code int, content string ) {
+    req.RespondContent( code, "text/plain;charset=utf-8", content )
+}
+
+func( req *Request ) RespondJson( code int, obj interface{} ) {
+
+}
+
+func( req *Request ) RespondFile( name string, modTime time.Time, rdskr io.ReadSeeker ) {
+    req.logStatus( 200 )
+    http.ServeContent( req.writer, req.body, name, modTime, rdskr )
 }

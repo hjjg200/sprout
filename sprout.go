@@ -3,7 +3,7 @@ package sprout
 import (
     "strings"
     "time"
-    
+
     "./network"
     "./environ"
 )
@@ -38,14 +38,14 @@ func( sprt *Sprout ) AddServer( srv *network.Server ) {
 // General
 
 func( sprt *Sprout ) StartAll() {
-    
+
     environ.Logger.OKln(
         strings.ToUpper( environ.AppName ),
         environ.AppVersion,
-        "UP AND RUNNING SINCE",
+        "UP AND RUNNING since",
         time.Now().Unix(),
     )
-    
+
     for _, srv := range sprt.servers {
         err := srv.Start()
         if err != nil {

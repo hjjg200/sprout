@@ -11,6 +11,7 @@ import (
     "time"
 
     "../cache"
+    "../environ"
     "../i18n"
     "../util"
 )
@@ -61,6 +62,8 @@ func( vol *BasicVolume ) Reset() {
     vol.localePathMx      = util.NewMapMutex()
     vol.templates         = template.New( "" )
     vol.templatesClone, _ = vol.templates.Clone()
+
+    vol.Import( environ.DefaultCache )
 }
 
 // Importers

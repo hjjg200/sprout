@@ -4,9 +4,7 @@
 - [ ] Clean up the volume source
 - [ ] Improve Cache
 - [ ] Show 500 when template error
-- [ ]
-- [ ] Implement a way to close request
-    - [ ] Log when closing request
+- [ ] Compile asset
 - [ ] Log details
 - [ ] Debug mode
 - [ ] Logger - when ANSI color enabled include color codes if not exclude color codes

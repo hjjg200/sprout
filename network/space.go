@@ -17,6 +17,7 @@ type Space struct {
 func NewSpace() *Space {
     return &Space{
         aliases: make( []string, 0 ),
+        handlers: make( []Handler, 0 ),
     }
 }
 
@@ -62,11 +63,25 @@ func( spc *Space ) TemplateHandler( path string, dataFunc func( *Request ) inter
     return HandlerFactory.Template( spc.volume.Template( path ), dataFunc )
 }
 
+func( spc *Space ) StatusHandler( code int ) Handler {
+    return func( req *Request ) bool {
+        HandlerFactory.Template(
+            spc.volume.Template( "template/error_page.html" ),
+            func( req *Request ) interface{} {
+                return map[string] interface{} {
+                    "code": code,
+                    "message": util.HttpStatusMessages[code],
+                }
+            },
+        )( req )
+    }
+}
+
 // GENERAL
 
 func( spc *Space ) ServeRequest( req *Request ) {
 
-    if !spc.ContainsAlias( req.body.Host ) {
+    if !spc.ContainsHost( req.body.Host ) {
         // Bad Request
         HandlerFactory.Status( 400 )( req )
         return
@@ -87,7 +102,7 @@ func( spc *Space ) serveRequest( req *Request ) {
 
     // Handle
     for _, handler := range spc.handlers {
-        if handler( req ); req.Closed() {
+        if done := handler( req ); done {
             break
         }
     }
@@ -98,16 +113,19 @@ func( spc *Space ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
     spc.ServeRequest( NewRequest( w, r ) )
 }
 
-func( spc *Space ) ContainsAlias( alias string ) bool {
+func( spc *Space ) ContainsHost( host string ) bool {
 
     // Empty aliases
     if len( spc.aliases ) == 0 {
         return true
     }
 
+    // Split
+    split := strings.SplitN( host, ":", 2 )
+
     // Compare
     for _, val := range spc.aliases {
-        if val == alias {
+        if val == split[0] {
             return true
         }
     }
