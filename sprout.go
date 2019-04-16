@@ -42,7 +42,7 @@ func( sprt *Sprout ) StartAll() {
 
     now := time.Now()
     environ.Logger.OKln(
-        strings.ToUpper( environ.AppName ),
+        strings.ToUpper( "🍀" + environ.AppName ),
         environ.AppVersion,
         "UP AND RUNNING since",
         fmt.Sprintf( "%d.%03d", now.Unix(), now.Nanosecond() / 1e+6 ),

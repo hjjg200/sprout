@@ -1,6 +1,7 @@
 package network
 
 import (
+    "fmt"
     "net/http"
     "strings"
 
@@ -22,8 +23,9 @@ func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
     // New
     req := &Request{
         body: r,
-        writer: newResponseWriter( w ),
     }
+    
+    req.writer = newResponseWriter( req, w )
 
     // return
     return req
@@ -42,13 +44,21 @@ func( req *Request ) Header() http.Header {
     return req.writer.Header()
 }
 
+func( req *Request ) String() string {
+    return fmt.Sprintf(
+        "%s %s %s <= %s",
+        req.body.Method,
+        req.body.Host + req.body.URL.Path,
+        req.body.Proto,
+        req.body.RemoteAddr,
+    )
+}
+
 func( req *Request ) logStatus( code int ) {
 
     // Args
     args := []interface{}{
-        req.body.Method,
-        req.body.Host + req.body.URL.Path,
-        req.body.Proto,
+        req.String(),
         code,
     }
 
@@ -76,8 +86,7 @@ func( req *Request ) Responder( code int ) *Responder {
         req.rsp = rsp
     }
 
-    rsp.writer.WriteHeader( code )
-    req.logStatus( code )
+    rsp.SetStatus( code )
     return rsp
 
 }

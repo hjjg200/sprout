@@ -35,8 +35,8 @@ func( rsp *Responder ) Header() http.Header {
     return rsp.writer.Header()
 }
 
-func( rsp *Responder ) Content( contentType, text string ) {
-    rsp.Header().Set( "content-type", contentType )
+func( rsp *Responder ) Content( ctype, text string ) {
+    rsp.Header().Set( "content-type", ctype )
     rsp.writer.Write( []byte( text ) )
 }
 
@@ -65,8 +65,7 @@ func( rsp *Responder ) json( obj interface{}, pretty bool ) {
 
     // Error
     if err != nil {
-        environ.Logger.Warnln( ErrMalformedJson )
-        p = []byte( "{}" )
+        rsp.Error( 500, ErrMalformedJson.Append( err ) )
     }
 
     rsp.Content( "text/json;charset=utf-8", string( p ) )
