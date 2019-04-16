@@ -10,7 +10,8 @@ var (
     ErrStoppingServer = util.NewError( 500, "failed to stop the server" )
     ErrServerExited = util.NewError( 500, "the server exited" )
     ErrRequestClosed = util.NewError( 500, "the request is already closed" )
-    
+    ErrDifferentStatusCode = util.NewError( 500, "attempted to write different status code" )
+
 )
 
 const (

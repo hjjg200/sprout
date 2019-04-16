@@ -1,10 +1,8 @@
 package network
 
 import (
-    "io"
     "net/http"
     "strings"
-    "time"
 
     "../i18n"
     "../environ"
@@ -12,9 +10,10 @@ import (
 
 type Request struct {
     body      *http.Request
-    closed    bool
     writer    http.ResponseWriter
     localizer *i18n.Localizer
+    space     *Space
+    rsp       *Responder
     vars      []string
 }
 
@@ -39,11 +38,6 @@ func( req *Request ) Header() http.Header {
     return req.writer.Header()
 }
 
-func( req *Request ) setStatus( code int ) {
-    req.writer.WriteHeader( code )
-    req.logStatus( code )
-}
-
 func( req *Request ) logStatus( code int ) {
 
     // Args
@@ -61,6 +55,26 @@ func( req *Request ) logStatus( code int ) {
     default:
         environ.Logger.OKln( args... )
     }
+
+}
+
+func( req *Request ) Responder( code int ) *Responder {
+
+    var rsp *Responder
+
+    if req.rsp != nil {
+        rsp = req.rsp
+    } else {
+        rsp = &Responder{
+            req: req,
+            writer: newResponseWriter( req.writer ),
+        }
+        req.rsp = rsp
+    }
+
+    rsp.writer.WriteHeader( code )
+    req.logStatus( code )
+    return rsp
 
 }
 
@@ -108,34 +122,4 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
 
     req.localizer = nil
 
-}
-
-// Respond
-
-func( req *Request ) Responder( code int ) http.ResponseWriter {
-    req.setStatus( code )
-    return req.writer
-}
-
-func( req *Request ) Respond( code int, content string ) {
-    req.RespondContent( code, "text/html;charset=utf-8", content )
-}
-
-func( req *Request ) RespondContent( code int, mimeType, content string ) {
-    req.setStatus( code )
-    req.writer.Header().Set( "content-type", mimeType )
-    req.writer.Write( []byte( content ) )
-}
-
-func( req *Request ) RespondText( code int, content string ) {
-    req.RespondContent( code, "text/plain;charset=utf-8", content )
-}
-
-func( req *Request ) RespondJson( code int, obj interface{} ) {
-
-}
-
-func( req *Request ) RespondFile( name string, modTime time.Time, rdskr io.ReadSeeker ) {
-    req.logStatus( 200 )
-    http.ServeContent( req.writer, req.body, name, modTime, rdskr )
 }

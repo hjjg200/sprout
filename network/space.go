@@ -63,20 +63,6 @@ func( spc *Space ) TemplateHandler( path string, dataFunc func( *Request ) inter
     return HandlerFactory.Template( spc.volume.Template( path ), dataFunc )
 }
 
-func( spc *Space ) StatusHandler( code int ) Handler {
-    return func( req *Request ) bool {
-        HandlerFactory.Template(
-            spc.volume.Template( "template/error_page.html" ),
-            func( req *Request ) interface{} {
-                return map[string] interface{} {
-                    "code": code,
-                    "message": util.HttpStatusMessages[code],
-                }
-            },
-        )( req )
-    }
-}
-
 // GENERAL
 
 func( spc *Space ) ServeRequest( req *Request ) {
@@ -92,6 +78,9 @@ func( spc *Space ) ServeRequest( req *Request ) {
 }
 
 func( spc *Space ) serveRequest( req *Request ) {
+
+    // Set parent
+    req.space = spc
 
     // Check locale with the space's i18n
     if spc.volume != nil {

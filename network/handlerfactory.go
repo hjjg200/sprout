@@ -2,12 +2,8 @@ package network
 
 import (
     "bytes"
-    "fmt"
     "html/template"
-    "runtime"
 
-    "../environ"
-    "../util"
     "../volume"
 )
 
@@ -30,8 +26,9 @@ func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
         }
 
         // Serve
+        rsp   := req.Responder( 200 )
         rdskr := bytes.NewReader( []byte( final ) )
-        req.RespondFile( ast.Name(), ast.ModTime(), rdskr )
+        rsp.File( ast.Name(), ast.ModTime(), rdskr )
         return true
 
     }
@@ -60,64 +57,17 @@ func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Re
         }
 
         // Serve
-        req.Respond( 200, final )
+        rsp := req.Responder( 200 )
+        rsp.Html( final )
         return true
 
     }
 }
 
-func( hf *handlerFactory ) Status( code int ) Handler {
+func( hf *handlerFactory ) Status( status int ) Handler {
     return func( req *Request ) bool {
-
-        // Content
-        c   := fmt.Sprint( code )
-        msg := util.HttpStatusMessages[code]
-        t := `<!doctype html>
-<html>
-    <head>
-        <title>` + c + " " + msg + `</title>
-        <style>
-            html {
-                font-family: sans-serif;
-                line-height: 1.0;
-                padding: 0;
-            }
-            body {
-                color: hsl( 220, 5%, 45% );
-                text-align: center;
-                padding: 10px;
-                margin: 0;
-            }
-            div {
-                border: 1px dashed hsl( 220, 5%, 88% );
-                padding: 20px;
-                margin: 0 auto;
-                max-width: 300px;
-                text-align: left;
-            }
-            h1, h2, h3 {
-                display: block;
-                margin: 0 0 5px 0;
-            }
-            footer {
-                color: hsl( 220, 5%, 68% );
-                font-family: monospace;
-                font-size: 1em;
-                text-align: right;
-                line-height: 1.3;
-            }
-        </style>
-    </head>
-    <body>
-        <div>
-            <h1>` + c + `</h1>
-            <h3>` + msg + `</h3>
-            <footer>` + environ.AppName + " " + environ.AppVersion + `<br />on ` + runtime.GOOS + `</footer>
-        </div>
-    </body>
-</html>`
-
-        req.Respond( code, t )
+        rsp := req.Responder( status )
+        rsp.Blank()
         return true
     }
 }
