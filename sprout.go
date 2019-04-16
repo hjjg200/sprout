@@ -1,6 +1,7 @@
 package sprout
 
 import (
+    "fmt"
     "strings"
     "time"
 
@@ -39,11 +40,12 @@ func( sprt *Sprout ) AddServer( srv *network.Server ) {
 
 func( sprt *Sprout ) StartAll() {
 
+    now := time.Now()
     environ.Logger.OKln(
         strings.ToUpper( environ.AppName ),
         environ.AppVersion,
         "UP AND RUNNING since",
-        time.Now().Unix(),
+        fmt.Sprintf( "%d.%03d", now.Unix(), now.Nanosecond() / 1e+6 ),
     )
 
     for _, srv := range sprt.servers {

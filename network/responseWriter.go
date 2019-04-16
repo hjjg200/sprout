@@ -11,6 +11,7 @@ type responseWriter struct {
     req         *Request
     status      int
     wroteHeader bool
+    finalized   bool
 }
 
 func newResponseWriter( w http.ResponseWriter ) *responseWriter {
@@ -18,6 +19,7 @@ func newResponseWriter( w http.ResponseWriter ) *responseWriter {
         body: w,
         status: 0,
         wroteHeader: false,
+        finalized: false,
     }
 }
 
@@ -31,18 +33,23 @@ func( rw *responseWriter ) Write( p []byte ) ( int, error ) {
         rw.status      = 200
     } else {
         // Write is essential to call WriteHeader
+        rw.finalized = true
         rw.body.WriteHeader( rw.status )
     }
     return rw.body.Write( p )
 }
 
-func( rw *responseWriter ) WriteHeader( code int ) {
+func( rw *responseWriter ) WriteHeader( status int ) {
     if !rw.wroteHeader {
         rw.wroteHeader = true
-        rw.status      = code
+        rw.status      = status
     } else {
-        if code != rw.status {
-            environ.Logger.Panicln( ErrDifferentStatusCode )
+        if status != rw.status {
+            if rw.finalized {
+                environ.Logger.Panicln( ErrDifferentStatusCode )
+            } else {
+                rw.status = status
+            }
         }
     }
 }

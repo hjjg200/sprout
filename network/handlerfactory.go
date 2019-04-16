@@ -1,7 +1,6 @@
 package network
 
 import (
-    "bytes"
     "html/template"
 
     "../volume"
@@ -13,7 +12,10 @@ var HandlerFactory = &handlerFactory{}
 func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
 
     return func( req *Request ) bool {
-
+        rsp := req.Responder( 200 )
+        rsp.Asset( ast )
+        return true
+/*
         if ast == nil {
             return HandlerFactory.Status( 404 )( req )
         }
@@ -30,7 +32,7 @@ func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
         rdskr := bytes.NewReader( []byte( final ) )
         rsp.File( ast.Name(), ast.ModTime(), rdskr )
         return true
-
+*/
     }
 
 }
@@ -38,6 +40,10 @@ func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
 func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
     return func( req *Request ) bool {
 
+        rsp := req.Responder( 200 )
+        rsp.Template( tmpl, dataFunc( req ) )
+        return true
+/*
         if tmpl == nil {
             return HandlerFactory.Status( 404 )( req )
         }
@@ -60,7 +66,7 @@ func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Re
         rsp := req.Responder( 200 )
         rsp.Html( final )
         return true
-
+*/
     }
 }
 

@@ -2,20 +2,25 @@ package network
 
 import (
     "net/http"
+    "strings"
 )
 
-func MakeMethodChecker( mflag int ) map[string] bool {
+func MakeMethodChecker( ss []string ) map[string] bool {
 
     fl := make( map[string] bool )
-    fl[http.MethodGet]     = MethodGet     & mflag == MethodGet
-    fl[http.MethodHead]    = MethodHead    & mflag == MethodHead
-    fl[http.MethodPost]    = MethodPost    & mflag == MethodPost
-    fl[http.MethodPut]     = MethodPut     & mflag == MethodPut
-    fl[http.MethodPatch]   = MethodPatch   & mflag == MethodPatch
-    fl[http.MethodDelete]  = MethodDelete  & mflag == MethodDelete
-    fl[http.MethodConnect] = MethodConnect & mflag == MethodConnect
-    fl[http.MethodOptions] = MethodOptions & mflag == MethodOptions
-    fl[http.MethodTrace]   = MethodTrace   & mflag == MethodTrace
+    fl[http.MethodGet]     = false
+    fl[http.MethodHead]    = false
+    fl[http.MethodPost]    = false
+    fl[http.MethodPut]     = false
+    fl[http.MethodPatch]   = false
+    fl[http.MethodDelete]  = false
+    fl[http.MethodConnect] = false
+    fl[http.MethodOptions] = false
+    fl[http.MethodTrace]   = false
+
+    for _, s := range ss {
+        fl[strings.ToUpper( s )] = true
+    }
 
     return fl
 

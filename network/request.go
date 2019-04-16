@@ -10,7 +10,7 @@ import (
 
 type Request struct {
     body      *http.Request
-    writer    http.ResponseWriter
+    writer    *responseWriter
     localizer *i18n.Localizer
     space     *Space
     rsp       *Responder
@@ -22,7 +22,7 @@ func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
     // New
     req := &Request{
         body: r,
-        writer: w,
+        writer: newResponseWriter( w ),
     }
 
     // return
@@ -32,6 +32,10 @@ func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
 
 func( req *Request ) Body() *http.Request {
     return req.body
+}
+
+func( req *Request ) Writer() http.ResponseWriter {
+    return req.writer
 }
 
 func( req *Request ) Header() http.Header {
@@ -67,7 +71,7 @@ func( req *Request ) Responder( code int ) *Responder {
     } else {
         rsp = &Responder{
             req: req,
-            writer: newResponseWriter( req.writer ),
+            writer: req.writer,
         }
         req.rsp = rsp
     }

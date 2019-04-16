@@ -1,6 +1,7 @@
 package network
 
 import (
+    "bytes"
     "encoding/json"
     "html/template"
     "io"
@@ -9,6 +10,7 @@ import (
 
     "../environ"
     "../util"
+    "../volume"
 )
 
 type Responder struct {
@@ -23,6 +25,10 @@ func( req *Request ) Responder( code int ) *Responder
 
 func( rsp *Responder ) Status() int {
     return rsp.writer.status
+}
+
+func( rsp *Responder ) SetStatus( status int ) {
+    rsp.writer.WriteHeader( status )
 }
 
 func( rsp *Responder ) Header() http.Header {
@@ -47,13 +53,20 @@ func( rsp *Responder ) json( obj interface{}, pretty bool ) {
     // Json
     var (
         p []byte
+        err error
     )
 
     // Marshal
     if pretty {
-        p, _ = json.MarshalIndent( obj, "", "  " )
+        p, err = json.MarshalIndent( obj, "", "  " )
     } else {
-        p, _ = json.Marshal( obj )
+        p, err = json.Marshal( obj )
+    }
+
+    // Error
+    if err != nil {
+        environ.Logger.Warnln( ErrMalformedJson )
+        p = []byte( "{}" )
     }
 
     rsp.Content( "text/json;charset=utf-8", string( p ) )
@@ -67,13 +80,13 @@ func( rsp *Responder ) Json( obj interface{} ) {
 func( rsp *Responder ) PrettyJson( obj interface{} ) {
     rsp.json( obj, true )
 }
-
+/*
 func( rsp *Responder ) xml( obj interface{}, pretty bool ) {}
 
 func( rsp *Responder ) Xml( obj interface{} ) {}
 
 func( rsp *Responder ) PrettyXml( obj interface{} ) {}
-
+*/
 func( rsp *Responder ) File( name string, modTime time.Time, rdskr io.ReadSeeker ) {
 
     // Serve
@@ -91,12 +104,15 @@ func( rsp *Responder ) Attachment( name string, modTime time.Time, rdskr io.Read
 
 }
 
-func( rsp *Responder ) Error( err error ) {
+func( rsp *Responder ) Error( status int, err error ) {
 
     var (
         tmpl *template.Template
         msg = util.HttpStatusMessages[rsp.Status()]
     )
+
+    // Change
+    rsp.SetStatus( status )
 
     if rsp.req.space.volume != nil {
         tmpl = rsp.req.space.volume.Template( environ.ErrorPageTemplatePath )
@@ -121,19 +137,61 @@ func( rsp *Responder ) Error( err error ) {
         }
     }
 
-    HandlerFactory.Template( tmpl, func( req *Request ) interface{} {
-        return data
-    } )( rsp.req )
+    rsp.Template( tmpl, data )
 
 }
 
 func( rsp *Responder ) Blank() {
-    rsp.Error( nil )
+    rsp.Error( rsp.Status(), nil )
 }
 
 func( rsp *Responder ) Redirect( url string ) {}
 
-func( rsp *Responder ) Template( *template.Template, data interface{} ) {}
+func( rsp *Responder ) Template( tmpl *template.Template, data interface{} ) {
 
-func( rsp *Responder ) Asset( *volume.Asset ) {}
+    if tmpl == nil {
+        rsp.Error( 404, nil )
+        return
+    }
 
+    // Exec
+    buf := bytes.NewBuffer( nil )
+    err := tmpl.Execute( buf, data )
+    if err != nil {
+        rsp.Error( 500, nil )
+        return
+    }
+
+    final := buf.String()
+
+    // Localize
+    if rsp.req.localizer != nil {
+        final = rsp.req.localizer.L( final )
+    }
+
+    // Serve
+    rsp.Html( final )
+    return
+
+}
+
+func( rsp *Responder ) Asset( ast *volume.Asset ) {
+
+    if ast == nil {
+        rsp.Error( 404, nil )
+        return
+    }
+
+    final := string( ast.Bytes() )
+
+    // Localize
+    if rsp.req.localizer != nil {
+        final = rsp.req.localizer.L( final )
+    }
+
+    // Serve
+    rdskr := bytes.NewReader( []byte( final ) )
+    rsp.File( ast.Name(), ast.ModTime(), rdskr )
+    return
+
+}

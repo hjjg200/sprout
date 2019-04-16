@@ -22,7 +22,7 @@ func TestSprout01( t *testing.T ) {
     space.WithHandler( network.HandlerFactory.BasicAuth( func( id, pw string ) bool {
         return id == "root" && pw == "root"
     }, "" ) )
-    space.WithRoute( "^/(index.html?)?$", network.MethodGet, space.TemplateHandler(
+    space.WithRoute( "^/(index.html?)?$", []string{ "GET" }, space.TemplateHandler(
         "template/index.html",
         func( req *network.Request ) interface{} {
             return map[string] interface{} {
@@ -34,7 +34,7 @@ func TestSprout01( t *testing.T ) {
             }
         },
     ) )
-    space.WithRoute( "^/a([a-z])?([a-z])?([a-z])?e$", network.MethodGet, space.TemplateHandler(
+    space.WithRoute( "^/a([a-z])?([a-z])?([a-z])?e$", []string{ "GET" }, space.TemplateHandler(
         "template/abcde.html",
         func( req *network.Request ) interface{} {
             return map[string] []string {
@@ -42,11 +42,11 @@ func TestSprout01( t *testing.T ) {
             }
         },
     ) )
-    space.WithRoute( "^/stop$", network.MethodGet, func( req *network.Request ) bool {
+    space.WithRoute( "^/stop$", []string{ "GET" }, func( req *network.Request ) bool {
         srv.Stop()
         return true
     } )
-    space.WithRoute( "^/error$", network.MethodGet, network.HandlerFactory.Status( 500 ) )
+    space.WithRoute( "^/error$", []string{ "GET" }, network.HandlerFactory.Status( 500 ) )
     space.WithAssetServer( "/asset/" )
     space.WithHandler( network.HandlerFactory.Status( 404 ) )
 

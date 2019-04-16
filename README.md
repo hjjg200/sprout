@@ -1,5 +1,18 @@
 # Sprout
 
+## Var
+
+```text
+Sprout => sprt
+Space => spc
+Server => srv
+Request => req
+Responder => rsp
+Handler => hnd
+Volume => vol
+Cache => chc
+```
+
 ## Design Plan
 
 ```text

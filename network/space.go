@@ -56,11 +56,15 @@ func( spc *Space ) SetVolume( vol volume.Volume ) {
 // VOLUME-RELATED
 
 func( spc *Space ) AssetHandler( path string ) Handler {
-    return HandlerFactory.Asset( spc.volume.Asset( path ) )
+    return func( req *Request ) bool {
+        return HandlerFactory.Asset( spc.volume.Asset( path ) )( req )
+    }
 }
 
 func( spc *Space ) TemplateHandler( path string, dataFunc func( *Request ) interface{} ) Handler {
-    return HandlerFactory.Template( spc.volume.Template( path ), dataFunc )
+    return func( req *Request ) bool {
+        return HandlerFactory.Template( spc.volume.Template( path ), dataFunc )( req )
+    }
 }
 
 // GENERAL
@@ -131,10 +135,10 @@ func( spc *Space ) WithHandler( hnd Handler ) {
 
 func( spc *Space ) WithReverseProxy( url string ) {}
 func( spc *Space ) WithSymlink( targetPath, linkPath string ) {}
-func( spc *Space ) WithRoute( rgxStr string, fl int, hnd Handler ) {
+func( spc *Space ) WithRoute( rgxStr string, methods []string, hnd Handler ) {
 
     rgx, err := regexp.Compile( rgxStr )
-    checker  := MakeMethodChecker( fl )
+    checker  := MakeMethodChecker( methods )
 
     spc.WithHandler( func( req *Request ) bool {
 
