@@ -1,44 +1,32 @@
 package network
 
-import (
-    "fmt"
-    "net/http"
-    "strings"
-
-    "../i18n"
-    "../environ"
-)
-
 type Request struct {
-    id        int64
-    body      *http.Request
-    hWriter   http.ResponseWriter
-    writer    *responseWriter
-    localizer *i18n.Localizer
-    space     *Space
-    rsp       *Responder
-    vars      []string
+    id          int64
+    body        *http.Request
+    writer      http.ResponseWriter
+    status      int
+    wroteHeader bool
+    localizer   *i18n.Localizer
+    space       *Space
+    rsp         *Responder
+    vars        []string
 }
 
-var nextRequestId int64 = 0
+var (
+    lastRequestID int64 = -1
+)
 
 func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
-
-    // New
-    req := &Request{
+    return &Request{
+        id: nextRequestID(),
         body: r,
-        hWriter: w,
+        writer: w,
     }
+}
 
-    // id
-    req.id = nextRequestId
-    nextRequestId++
-
-    req.writer = newResponseWriter( req )
-
-    // return
-    return req
-
+func nextRequestID() int64 {
+    lastRequestID++
+    return lastRequestID
 }
 
 func( req *Request ) ID() int64 {
@@ -49,12 +37,68 @@ func( req *Request ) Body() *http.Request {
     return req.body
 }
 
-func( req *Request ) Writer() http.ResponseWriter {
-    return req.writer
+func( req *Request ) Localizer() *i18n.Localizer {
+    return req.localizer
+}
+
+func( req *Request ) Status() int {
+    return req.status
+}
+
+func( req *Request ) Vars() []string {
+    return req.vars
+}
+
+func( req *Request ) Write( p []byte ) ( int, error ) {
+    return req.writer.Write( p )
+}
+
+func( req *Request ) SetStatus( status int ) {
+
+    if req.wroteHeader {
+        environ.Logger.Panicln( ErrDifferentStatusCode.Append( "ID", req.ID() ) )
+    }
+
+    req.wroteHeader = true
+    req.status      = status
+    req.writer.WriteHeader( status )
+
+    // Args
+    args := []interface{}{
+        "ID",
+        req.ID(),
+        req.String(),
+        status,
+    }
+
+    // Log
+    switch {
+    case status >= 500:
+        environ.Logger.Warnln( args... )
+    default:
+        environ.Logger.OKln( args... )
+    }
+
+}
+
+func( req *Request ) WriteHeader( status int ) {
+    req.SetStatus( status )
 }
 
 func( req *Request ) Header() http.Header {
     return req.writer.Header()
+}
+
+func( req *Request ) Responder() *Responder {
+
+    if req.rsp != nil {
+        return req.rsp
+    }
+
+    rsp := &Responder{ req }
+    req.rsp = rsp
+    return rsp
+
 }
 
 func( req *Request ) String() string {
@@ -65,53 +109,6 @@ func( req *Request ) String() string {
         req.body.Proto,
         req.body.RemoteAddr,
     )
-}
-
-func( req *Request ) logStatus( code int ) {
-
-    // Args
-    args := []interface{}{
-        "ID",
-        req.ID(),
-        req.String(),
-        code,
-    }
-
-    // Log
-    switch {
-    case code >= 500:
-        environ.Logger.Warnln( args... )
-    default:
-        environ.Logger.OKln( args... )
-    }
-
-}
-
-func( req *Request ) Responder( code int ) *Responder {
-
-    var rsp *Responder
-
-    if req.rsp != nil {
-        rsp = req.rsp
-    } else {
-        rsp = &Responder{
-            req: req,
-            writer: req.writer,
-        }
-        req.rsp = rsp
-    }
-
-    rsp.SetStatus( code )
-    return rsp
-
-}
-
-func( req *Request ) Localizer() *i18n.Localizer {
-    return req.localizer
-}
-
-func( req *Request ) Vars() []string {
-    return req.vars
 }
 
 func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {

@@ -14,9 +14,9 @@ type responseWriter struct {
     finalized   bool
 }
 
-func newResponseWriter( req *Request, w http.ResponseWriter ) *responseWriter {
+func newResponseWriter( req *Request ) *responseWriter {
     return &responseWriter{
-        body: w,
+        body: req.hWriter,
         req: req,
         status: 0,
         wroteHeader: false,
@@ -50,7 +50,7 @@ func( rw *responseWriter ) WriteHeader( status int ) {
             if rw.finalized {
                 environ.Logger.Panicln( ErrDifferentStatusCode )
             } else {
-                environ.Logger.OKln( "switched status", rw.req.String(), rw.status, "=>", status )
+                environ.Logger.OKln( "ID", rw.req.ID(), "switched status", rw.status, "=>", status )
                 rw.status = status
             }
         }
