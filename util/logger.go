@@ -4,12 +4,13 @@ import (
     "fmt"
     "io"
     "os"
+    "strings"
     "time"
 )
 
 type Logger struct{
-    w io.Writer
-    timeType int
+    colors []io.Writer
+    monos  []io.Writer
 }
 
 var (
@@ -26,13 +27,14 @@ func secondsFromStart() string {
 
 func NewLogger() *Logger {
     return &Logger{
-        w: os.Stdout,
+        colors: []io.Writer{ os.Stdout },
+        monos: []io.Writer{},
     }
 }
 
 func( lgr *Logger ) print( prefix string, args ...interface{} ) {
 
-    if lgr.w != nil {
+    if len( lgr.colors ) + len( lgr.monos ) > 0 {
 
         out := prefix + " "
         out += secondsFromStart()
@@ -45,7 +47,12 @@ func( lgr *Logger ) print( prefix string, args ...interface{} ) {
             out += fmt.Sprint( args[i] )
         }
 
-        fmt.Fprint( lgr.w, out )
+        for _, w := range lgr.colors {
+            fmt.Fprint( w, out )
+        }
+        for _, w := range lgr.monos {
+            fmt.Fprint( w, stripAnsiColor( out ) )
+        }
 
     }
 
@@ -74,10 +81,31 @@ func( lgr *Logger ) Panicln( args ...interface{} ) {
     panic( "" )
 }
 
-func( lgr *Logger ) SetOutput( w io.Writer ) {
-    lgr.w = w
+func( lgr *Logger ) AddColorWriter( w io.Writer ) {
+    lgr.colors = append( lgr.colors, w )
 }
 
-func( lgr *Logger ) SetTimeType( t int ) {
-    lgr.timeType = t
+func( lgr *Logger ) AddMonoWriter( w io.Writer ) {
+    lgr.monos = append( lgr.monos, w )
+}
+
+func stripAnsiColor( str string ) string {
+
+    for i := 0; i < 5; i++ {
+        pos := strings.Index( str, "\033" )
+        if pos == -1 {
+            break
+        }
+        pos2 := strings.Index( str[pos:], "m" ) + pos
+        if pos2 == -1 {
+            break
+        }
+        if pos2 == len( str ) - 1 {
+            str = str[:pos]
+        } else {
+            str = str[:pos] + str[pos2 + 1:]
+        }
+    }
+    return str
+
 }

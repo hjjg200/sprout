@@ -299,6 +299,15 @@ func( i1 *I18n ) SetDelimiters( left, right string ) error {
     return nil
 }
 
+func( i1 *I18n ) MakeCookie( lcName string ) *http.Cookie {
+    return &http.Cookie{
+        Name: i1.cookie,
+        Value: lcName,
+        Path: "/", // for every page
+        MaxAge: 0, // persistent cookie
+    }
+}
+
 /*
  + ParseAcceptLangauge
  *

@@ -2,14 +2,26 @@ package volume
 
 import (
     "bytes"
-    
+
     "../system"
 )
 
-func CompileScss( src string ) ( string, error ) {
-    
+type Compiler struct {
+    outExt string
+    fn func( *Asset ) ( *Asset, error )
+}
+
+var Compilers = map[string] Compiler {
+    ".scss": Compiler{ ".css", CompileScss },
+}
+
+func CompileScss( ast *Asset ) ( *Asset, error ) {
+
+    // Vars
+    bwoext := BaseWithoutExt( ast.Name() )
+
     // Cmd
-    sti := bytes.NewReader( []byte( src ) )
+    sti := bytes.NewReader( ast.Bytes() )
     sto := bytes.NewBuffer( nil )
     // sass --stdin
     // : this makes sass to accept input from the stdin
@@ -17,9 +29,12 @@ func CompileScss( src string ) ( string, error ) {
     err := system.Exec( sti, sto, nil, "sass", "--stdin", "--style=compressed" )
 
     if err != nil {
-        return "", ErrCompileFailure.Append( "sass", err )
+        return nil, ErrCompileFailure.Append( "sass", err )
     }
-    
-    return sto.String(), nil
-    
+
+    // Make
+    rd := bytes.NewReader( sto.Bytes() )
+
+    return NewAsset( bwoext + ".css", rd, ast.ModTime() ), nil
+
 }

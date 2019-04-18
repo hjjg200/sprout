@@ -144,6 +144,7 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
             }
         }
         req.localizer = i1.Localizer( lcName )
+        http.SetCookie( req, i1.MakeCookie( lcName ) )
         return
 
     }

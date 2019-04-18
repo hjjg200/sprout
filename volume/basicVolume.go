@@ -11,6 +11,7 @@ import (
     "time"
 
     "../cache"
+    "../environ"
     "../i18n"
     "../util"
 )
@@ -129,12 +130,14 @@ func( vol *BasicVolume ) PutAsset( path string, ast *Asset ) error {
 }
 
 func( vol *BasicVolume ) putAsset( path string, ast *Asset ) {
+
     buf := make( map[string] *Asset )
     for k, v := range vol.assets {
         buf[k] = v
     }
     buf[path] = ast
     vol.assets = buf
+
 }
 
 func( vol *BasicVolume ) PutLocale( lc *i18n.Locale ) {
