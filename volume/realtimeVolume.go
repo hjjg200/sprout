@@ -36,9 +36,21 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
 
     fi, err := os.Stat( absPath )
     if err != nil {
+        if os.IsNotExist( err ) {
+            // If Compiled
+            if in, ok := DefaultCompilers.InputOf( path ); ok {
+                for _, i := range in {
+                    err := rtv.validate( i )
+                    if err != nil {
+                        return err
+                    }
+                }
+                return nil
+            }
+        }
         return ErrFileError.Append( path, err )
     }
-
+    
     mt, ok := rtv.modTime[path]
     if ok {
         if fi.ModTime().Sub( mt ) <= 0 {

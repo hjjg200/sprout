@@ -137,6 +137,16 @@ func( vol *BasicVolume ) putAsset( path string, ast *Asset ) {
     }
     buf[path] = ast
     vol.assets = buf
+    
+    // Compile
+    cmp, ok := DefaultCompilers.OutputOf( path )
+    if ok {
+        cmpAst, err := DefaultCompilers.Compile( ast )
+        if err != nil {
+            environ.Logger.Warnln( ErrCompileFailure.Append( err ) )
+        }
+        vol.putAsset( cmp, cmpAst )
+    }
 
 }
 

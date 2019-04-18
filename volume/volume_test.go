@@ -6,7 +6,7 @@ import (
 
 func TestVolume01( t *testing.T ) {
 
-    css, err := CompileScss( `
+    css, err := CompileScss( []byte( `
 body {
     div {
         .white {
@@ -14,10 +14,10 @@ body {
         }
     }
 }
-` )
+` ) )
     if err != nil {
         t.Log( err )
     }
-    t.Log( css )
+    t.Log( string( css ) )
 
 }

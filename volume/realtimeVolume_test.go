@@ -2,7 +2,6 @@ package volume
 
 import (
     "fmt"
-    "io"
     "os"
     "testing"
 )
@@ -22,36 +21,35 @@ func TestRealtimeVolume01( t *testing.T ) {
 
     rtv := NewRealtimeVolume( testDir )
 
+    fmt.Println( "--- CSS" )
     write( testDir + "/" + "asset/a.css", `body {
     line-height: 1.5; /* FIRST WRITE */
 }` )
-    ast, _ := rtv.Asset( "asset/a.css" )
-    io.Copy( os.Stdout, ast )
-    fmt.Print( "\n" )
+    ast := rtv.Asset( "asset/a.css" )
+    fmt.Println( string( ast.Bytes() ) )
 
     write( testDir + "/" + "asset/a.css", `body {
     line-height: 2.22; /* SECOND WRITE */
 }` )
-    ast, _ = rtv.Asset( "asset/a.css" )
-    io.Copy( os.Stdout, ast )
-    fmt.Print( "\n" )
+    ast = rtv.Asset( "asset/a.css" )
+    fmt.Println( string( ast.Bytes() ) )
 
     write( testDir + "/" + "asset/a.css", `body {
     color: red;
     line-height: 2.22; /* THIRD WRITE */
 }` )
-    ast, _ = rtv.Asset( "asset/a.css" )
-    io.Copy( os.Stdout, ast )
-    fmt.Print( "\n" )
+    ast = rtv.Asset( "asset/a.css" )
+    fmt.Println( string( ast.Bytes() ) )
 
     // Localizer
+    fmt.Println( "--- LOCALIZER" )
     write( testDir + "/" + "i18n/en.json", `{
     "en": {
         "ABC": "first"
     }
 }` )
-    lc, ok := rtv.Localizer( "en" )
-    if !ok {
+    lc := rtv.Localizer( "en" )
+    if lc == nil {
         t.Error( "no localizer" )
         fmt.Println( rtv.I18n().LocaleNames() )
         return
@@ -62,14 +60,24 @@ func TestRealtimeVolume01( t *testing.T ) {
         "ABC": "second"
     }
 }` )
-    lc, ok = rtv.Localizer( "en" )
+    lc = rtv.Localizer( "en" )
     fmt.Println( lc.L( `{% ABC %}` ) )
     write( testDir + "/" + "i18n/en.json", `{
     "en": {
         "ABC": "third"
     }
 }` )
-    lc, ok = rtv.Localizer( "en" )
+    lc = rtv.Localizer( "en" )
     fmt.Println( lc.L( `{% ABC %}` ) )
 
+    // Compile
+    fmt.Println( "--- COMPILE" )
+    
+    ast = rtv.Asset( "asset/b.css" )
+    if ast == nil {
+        t.Error( "not found" )
+        return
+    }
+    fmt.Println( string( ast.Bytes() ) )
+    
 }
