@@ -108,7 +108,11 @@ func( chc *Cache ) Data() []byte {
     chc.hs.Add( switchRead, 1 )
     defer chc.hs.Done( switchRead )
 
-    return chc.data
+    // Make copy since chc.data is liable to changes at any moment
+    cp := make( []byte, len( chc.data ) )
+    copy( cp, chc.data )
+
+    return cp
 
 }
 
