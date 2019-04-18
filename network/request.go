@@ -1,44 +1,47 @@
 package network
 
 import (
+    "bytes"
+    "encoding/json"
     "fmt"
+    "html/template"
+    "io"
     "net/http"
     "strings"
+    "time"
 
-    "../i18n"
     "../environ"
+    "../i18n"
+    "../util"
+    "../volume"
 )
 
 type Request struct {
-    id        int64
-    body      *http.Request
-    hWriter   http.ResponseWriter
-    writer    *responseWriter
-    localizer *i18n.Localizer
-    space     *Space
-    rsp       *Responder
-    vars      []string
+    id          int64
+    body        *http.Request
+    writer      http.ResponseWriter
+    status      int
+    wroteHeader bool
+    localizer   *i18n.Localizer
+    space       *Space
+    vars        []string
 }
 
-var nextRequestId int64 = 0
+var (
+    lastRequestID int64 = -1
+)
 
 func NewRequest( w http.ResponseWriter, r *http.Request ) *Request {
-
-    // New
-    req := &Request{
+    return &Request{
+        id: nextRequestID(),
         body: r,
-        hWriter: w,
+        writer: w,
     }
+}
 
-    // id
-    req.id = nextRequestId
-    nextRequestId++
-
-    req.writer = newResponseWriter( req )
-
-    // return
-    return req
-
+func nextRequestID() int64 {
+    lastRequestID++
+    return lastRequestID
 }
 
 func( req *Request ) ID() int64 {
@@ -49,8 +52,52 @@ func( req *Request ) Body() *http.Request {
     return req.body
 }
 
-func( req *Request ) Writer() http.ResponseWriter {
-    return req.writer
+func( req *Request ) Localizer() *i18n.Localizer {
+    return req.localizer
+}
+
+func( req *Request ) Status() int {
+    return req.status
+}
+
+func( req *Request ) Vars() []string {
+    return req.vars
+}
+
+func( req *Request ) Write( p []byte ) ( int, error ) {
+    return req.writer.Write( p )
+}
+
+func( req *Request ) SetStatus( status int ) {
+
+    if req.wroteHeader {
+        environ.Logger.Panicln( ErrDifferentStatusCode.Append( "ID", req.ID() ) )
+    }
+
+    req.wroteHeader = true
+    req.status      = status
+    req.writer.WriteHeader( status )
+
+    // Args
+    args := []interface{}{
+        "ID",
+        req.ID(),
+        req.String(),
+        status,
+    }
+
+    // Log
+    switch {
+    case status >= 500:
+        environ.Logger.Warnln( args... )
+    default:
+        environ.Logger.OKln( args... )
+    }
+
+}
+
+func( req *Request ) WriteHeader( status int ) {
+    req.SetStatus( status )
 }
 
 func( req *Request ) Header() http.Header {
@@ -65,53 +112,6 @@ func( req *Request ) String() string {
         req.body.Proto,
         req.body.RemoteAddr,
     )
-}
-
-func( req *Request ) logStatus( code int ) {
-
-    // Args
-    args := []interface{}{
-        "ID",
-        req.ID(),
-        req.String(),
-        code,
-    }
-
-    // Log
-    switch {
-    case code >= 500:
-        environ.Logger.Warnln( args... )
-    default:
-        environ.Logger.OKln( args... )
-    }
-
-}
-
-func( req *Request ) Responder( code int ) *Responder {
-
-    var rsp *Responder
-
-    if req.rsp != nil {
-        rsp = req.rsp
-    } else {
-        rsp = &Responder{
-            req: req,
-            writer: req.writer,
-        }
-        req.rsp = rsp
-    }
-
-    rsp.SetStatus( code )
-    return rsp
-
-}
-
-func( req *Request ) Localizer() *i18n.Localizer {
-    return req.localizer
-}
-
-func( req *Request ) Vars() []string {
-    return req.vars
 }
 
 func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
@@ -149,5 +149,149 @@ func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {
     }
 
     req.localizer = nil
+
+}
+
+// POP METHODS
+
+func( req *Request ) Pop( status int, text string, ctype string ) {
+    req.Header().Set( "content-type", ctype )
+    req.SetStatus( status )
+    req.Write( []byte( text ) )
+}
+
+func( req *Request ) PopError( status int, err error ) {
+
+    var (
+        tmpl *template.Template
+        msg = util.HttpStatusMessages[status]
+    )
+
+    if req.space.volume != nil {
+        tmpl = req.space.volume.Template( environ.ErrorPageTemplatePath )
+    }
+    if tmpl == nil {
+        tmpl = environ.DefaultErrorPageTemplate
+    }
+
+    // Map
+    var data map[string] interface{}
+
+    if err == nil {
+        data = map[string] interface{} {
+            "status": status,
+            "message": msg,
+        }
+    } else {
+        data = map[string] interface{} {
+            "status": status,
+            "message": msg,
+            "error": err.Error(),
+        }
+    }
+
+    req.PopTemplate( status, tmpl, data )
+
+}
+
+func( req *Request ) PopBlank( status int ) {
+    req.PopError( status, nil )
+}
+
+func( req *Request ) PopText( status int, text string ) {
+    req.Pop( status, text, "text/plain;charset=utf-8" )
+}
+
+func( req *Request ) PopHtml( status int, html string ) {
+    req.Pop( status, html, "text/html;charset=utf-8" )
+}
+
+func( req *Request ) PopTemplate( status int, tmpl *template.Template, data interface{} ) {
+
+    if tmpl == nil {
+        req.PopError( 404, nil )
+        return
+    }
+
+    // Exec
+    buf := bytes.NewBuffer( nil )
+    err := tmpl.Execute( buf, data )
+    if err != nil {
+        req.PopError( 500, nil )
+        return
+    }
+
+    final := buf.String()
+
+    // Localize
+    if req.localizer != nil {
+        final = req.localizer.L( final )
+    }
+
+    // Serve
+    req.PopHtml( status, final )
+    return
+
+}
+
+func( req *Request ) popJson( status int, obj interface{}, pretty bool ) {
+
+    // Json
+    var (
+        p []byte
+        err error
+    )
+
+    // Marshal
+    if pretty {
+        p, err = json.MarshalIndent( obj, "", "  " )
+    } else {
+        p, err = json.Marshal( obj )
+    }
+
+    // Error
+    if err != nil {
+        req.PopError( 500, ErrMalformedJson.Append( err ) )
+    }
+
+    req.Pop( status, string( p ), "text/json;charset=utf-8" )
+
+}
+func( req *Request ) PopJson( status int, obj interface{} ) {
+    req.popJson( status, obj, false )
+}
+func( req *Request ) PopPrettyJson( status int, obj interface{} ) {
+    req.popJson( status, obj, true )
+}
+
+func( req *Request ) PopAsset( ast *volume.Asset ) {
+
+    if ast == nil {
+        req.PopError( 404, nil )
+        return
+    }
+
+    final := string( ast.Bytes() )
+
+    // Localize
+    if req.localizer != nil {
+        final = req.localizer.L( final )
+    }
+
+    // Serve
+    rdskr := bytes.NewReader( []byte( final ) )
+    req.PopFile( ast.Name(), ast.ModTime(), rdskr )
+    return
+
+}
+func( req *Request ) PopFile( name string, modTime time.Time, rdskr io.ReadSeeker ) {
+    http.ServeContent( req, req.body, name, modTime, rdskr )
+}
+func( req *Request ) PopAttachment( name string, modTime time.Time, rdskr io.ReadSeeker ) {
+
+    req.Header().Set( "Content-Type", "application/octet-stream" )
+    req.Header().Set( "Content-Transfer-Encoding", "Binary" )
+    req.Header().Set( "Content-Disposition", "attachment; filename=\"" + name + "\"" )
+    req.PopFile( name, modTime, rdskr )
 
 }

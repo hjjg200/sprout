@@ -162,8 +162,7 @@ func( spc *Space ) WithAssetServer( prefix string ) {
         path := req.body.URL.Path
         if strings.HasPrefix( path, prefix ) && len( path ) > len( prefix ) {
             astPath := "asset/" + path[len( prefix ):]
-            rsp := req.Responder( 200 )
-            rsp.Asset( spc.volume.Asset( astPath ) )
+            req.PopAsset( spc.volume.Asset( astPath ) )
             return true
         }
         return false

@@ -10,70 +10,22 @@ type handlerFactory struct{}
 var HandlerFactory = &handlerFactory{}
 
 func( hf *handlerFactory ) Asset( ast *volume.Asset ) Handler {
-
     return func( req *Request ) bool {
-        rsp := req.Responder( 200 )
-        rsp.Asset( ast )
+        req.PopAsset( ast )
         return true
-/*
-        if ast == nil {
-            return HandlerFactory.Status( 404 )( req )
-        }
-
-        final := string( ast.Bytes() )
-
-        // Localize
-        if req.localizer != nil {
-            final = req.localizer.L( final )
-        }
-
-        // Serve
-        rsp   := req.Responder( 200 )
-        rdskr := bytes.NewReader( []byte( final ) )
-        rsp.File( ast.Name(), ast.ModTime(), rdskr )
-        return true
-*/
     }
-
 }
 
 func( hf *handlerFactory ) Template( tmpl *template.Template, dataFunc func( *Request ) interface{} ) Handler {
     return func( req *Request ) bool {
-
-        rsp := req.Responder( 200 )
-        rsp.Template( tmpl, dataFunc( req ) )
+        req.PopTemplate( 200, tmpl, dataFunc( req ) )
         return true
-/*
-        if tmpl == nil {
-            return HandlerFactory.Status( 404 )( req )
-        }
-
-        // Exec
-        buf := bytes.NewBuffer( nil )
-        err := tmpl.Execute( buf, dataFunc( req ) )
-        if err != nil {
-            return HandlerFactory.Status( 500 )( req )
-        }
-
-        final := buf.String()
-
-        // Localize
-        if req.localizer != nil {
-            final = req.localizer.L( final )
-        }
-
-        // Serve
-        rsp := req.Responder( 200 )
-        rsp.Html( final )
-        return true
-*/
     }
 }
 
 func( hf *handlerFactory ) Status( status int ) Handler {
     return func( req *Request ) bool {
-        rsp := req.Responder( status )
-        rsp.Blank()
+        req.PopBlank( status )
         return true
     }
 }
