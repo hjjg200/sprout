@@ -29,7 +29,7 @@ func TestCache01( t *testing.T ) {
     chc.Flush()
 
     create( "c.txt", "DDD" )
-    create( "d.txt", "5345" )
+    create( "e/d.txt", "5345" )
     chc.Flush()
 
     files := chc.Files()
@@ -42,7 +42,7 @@ func TestCache01( t *testing.T ) {
     }
     chc.Flush()
 
-    f, _ := os.OpenFile( "../test/cache_test_01/a.zip", os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644 )
+    f, _ := os.OpenFile( "../test/TestCache01/a.zip", os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644 )
     f.Write( chc.Data() )
     f.Close()
 

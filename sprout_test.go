@@ -1,6 +1,7 @@
 package sprout
 
 import (
+    "bytes"
     "./network"
     "./volume"
     "testing"
@@ -47,6 +48,16 @@ func TestSprout01( t *testing.T ) {
         return true
     } )
     space.WithRoute( "^/error$", []string{ "GET" }, network.HandlerFactory.Status( 500 ) )
+    space.WithRoute(
+        "^/some.txt$",
+        []string{ "GET" },
+        func( req *network.Request ) bool {
+            ast := space.Volume().Asset( "asset/some.txt" )
+            rdskr := bytes.NewReader( ast.Bytes() )
+            req.PopAttachment( ast.Name(), ast.ModTime(), rdskr )
+            return true
+        },
+    )
     space.WithAssetServer( "/asset/" )
     space.WithHandler( network.HandlerFactory.Status( 404 ) )
 

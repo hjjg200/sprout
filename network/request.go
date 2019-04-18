@@ -171,7 +171,7 @@ func( req *Request ) PopError( status int, err error ) {
         tmpl = req.space.volume.Template( environ.ErrorPageTemplatePath )
     }
     if tmpl == nil {
-        tmpl = environ.DefaultErrorPageTemplate
+        tmpl = volume.DefaultVolume.Template( environ.ErrorPageTemplatePath )
     }
 
     // Map

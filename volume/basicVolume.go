@@ -42,6 +42,13 @@ func( vol *BasicVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
 }
 
 func( vol *BasicVolume ) Template( path string ) ( *template.Template ) {
+
+    /*/
+     +  Note that html/template#Template.Lookup( "" ) returns itself while
+     + text/template#Template.Lookup( "" ) returns nil
+     + provided the template was created as t := template.New( "" )
+    /*/
+
     if tmpl := vol.templates.Lookup( path ); tmpl != nil {
         return tmpl
     }
@@ -292,8 +299,6 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
 }
 
 func( vol *BasicVolume ) Import( chc *cache.Cache ) error {
-
-    vol.Reset()
 
     for _, f := range chc.Files() {
 
