@@ -8,7 +8,7 @@ import (
     "../environ"
 )
 
-var DefaultVolume *BasicVolume
+var DefaultVolume Volume
 
 func init() {
 
@@ -63,8 +63,6 @@ func init() {
         </div>
     </body>
 </html>` )
-
-    chc.Flush()
 
     DefaultVolume = NewBasicVolume()
     DefaultVolume.Import( chc )

@@ -79,7 +79,7 @@ func( srv *Server ) ServeRequest( req *Request ) {
             return
         }
     }
-    HandlerFactory.Status( 404 )( req )
+    req.PopBlank( 404 )
 }
 
 func( srv *Server ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {

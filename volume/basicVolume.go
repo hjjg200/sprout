@@ -63,12 +63,15 @@ func( vol *BasicVolume ) I18n() *i18n.I18n {
 // General
 
 func( vol *BasicVolume ) Reset() {
+
+    // Members
     vol.assets            = make( map[string] *Asset )
     vol.i18n              = i18n.New()
     vol.localePath        = make( map[string] string )
     vol.localePathMx      = util.NewMapMutex()
     vol.templates         = template.New( "" )
     vol.templatesClone, _ = vol.templates.Clone()
+
 }
 
 // Importers
@@ -137,7 +140,7 @@ func( vol *BasicVolume ) putAsset( path string, ast *Asset ) {
     }
     buf[path] = ast
     vol.assets = buf
-    
+
     // Compile
     cmp, ok := DefaultCompilers.OutputOf( path )
     if ok {

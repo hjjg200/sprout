@@ -172,7 +172,9 @@ func( req *Request ) PopError( status int, err error ) {
         tmpl = req.space.volume.Template( environ.ErrorPageTemplatePath )
     }
     if tmpl == nil {
-        tmpl = volume.DefaultVolume.Template( environ.ErrorPageTemplatePath )
+        environ.Logger.Warnln( "Missing template", environ.ErrorPageTemplatePath )
+        req.PopText( status, fmt.Sprintf( "%d %s", status, msg ) )
+        return
     }
 
     // Map

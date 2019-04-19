@@ -2,9 +2,12 @@ package network
 
 import (
     "net/http"
+    "net/http/httputil"
+    "net/url"
     "strings"
     "regexp"
 
+    "../environ"
     "../volume"
 )
 
@@ -73,7 +76,7 @@ func( spc *Space ) ServeRequest( req *Request ) {
 
     if !spc.ContainsHost( req.body.Host ) {
         // Bad Request
-        HandlerFactory.Status( 400 )( req )
+        req.PopBlank( 400 )
         return
     }
 
@@ -133,7 +136,38 @@ func( spc *Space ) WithHandler( hnd Handler ) {
     spc.handlers = append( spc.handlers, hnd )
 }
 
-func( spc *Space ) WithReverseProxy( url string ) {}
+func( spc *Space ) WithReverseProxy( target string ) {
+
+    urlObj, err := url.Parse( target )
+    proxy       := httputil.NewSingleHostReverseProxy( urlObj )
+
+    spc.WithHandler( func( req *Request ) bool {
+
+        if err != nil {
+            req.PopError( 502, err )
+        }
+
+        // Log
+        environ.Logger.OKln(
+            "ID",
+            req.ID(),
+            req.String(),
+            "Reverse Proxy",
+        )
+
+        // Update headers to allow SSL connection
+        req.body.URL.Host = urlObj.Host
+        req.body.URL.Scheme = urlObj.Scheme
+        req.body.Header.Set( "X-Forwarded-Host", req.body.Header.Get( "Host" ) )
+        req.body.Host = urlObj.Host
+
+        proxy.ServeHTTP( req.writer, req.body )
+        return true
+
+    } )
+
+}
+
 func( spc *Space ) WithSymlink( targetPath, linkPath string ) {}
 func( spc *Space ) WithRoute( rgxStr string, methods []string, hnd Handler ) {
 

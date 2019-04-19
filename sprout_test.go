@@ -12,13 +12,22 @@ func TestSprout01( t *testing.T ) {
     sprt := New()
 
     srv := network.NewServer()
+    srv2 := network.NewServer()
     space := network.NewSpace()
+    space2 := network.NewSpace()
 
     sprt.AddServer( srv )
+    sprt.AddServer( srv2 )
     srv.AddSpace( space )
+    space.AddAlias( "127.0.0.1" )
     srv.SetPort( 8002 )
+    srv2.AddSpace( space2 )
+    srv2.SetPort( 8003 )
 
     vol := volume.NewRealtimeVolume( "./test/TestSprout01" )
+
+    space2.WithReverseProxy( "http://127.0.0.1:8002" )
+
     space.SetVolume( vol )
     space.WithHandler( network.HandlerFactory.BasicAuth( func( id, pw string ) bool {
         return id == "root" && pw == "root"

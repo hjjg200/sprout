@@ -3,6 +3,7 @@ package sprout
 import (
     "fmt"
     "strings"
+    "sync"
     "time"
 
     "./network"
@@ -48,12 +49,20 @@ func( sprt *Sprout ) StartAll() {
         fmt.Sprintf( "%d.%03d", now.Unix(), now.Nanosecond() / 1e+6 ),
     )
 
+    var wg sync.WaitGroup
+    wg.Add( len( sprt.servers ) )
+
     for _, srv := range sprt.servers {
-        err := srv.Start()
-        if err != nil {
-            environ.Logger.Warnln( err )
-        }
+        go func( i *network.Server ) {
+            err := i.Start()
+            if err != nil {
+                environ.Logger.Warnln( err )
+            }
+            wg.Done()
+        }( srv )
     }
+
+    wg.Wait()
 
 }
 
