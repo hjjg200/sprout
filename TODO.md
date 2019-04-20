@@ -2,7 +2,7 @@
 
 - [x] Add a cookie after populating the localizer for a request
 - [x] Show 500 when template error
-- [ ] Compile asset
+- [x] Compile asset
 - [ ] Log details
 - [ ] Debug mode
 - [x] Logger - when ANSI color enabled include color codes if not exclude color codes

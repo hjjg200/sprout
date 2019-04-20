@@ -64,6 +64,33 @@ func init() {
     </body>
 </html>` )
 
+    create( environ.IndexPageTemplatePath, `<!doctype html>
+<html>
+    <head>
+        <title>{{ .title }}</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <ul class="breadcrumb">
+            {{ range .breadcrumb }}
+                <li>
+                    <a href="{{ .href }}">
+                        <span class="name">{{ .name }}</span>
+                        <span class="slash">/</span>
+                    </a>
+                </li>
+            {{ end }}
+        </ol>
+        <ol class="entries">
+            {{ range .entries }}
+                <li>
+
+                </li>
+            {{ end }}
+        </ol>
+    </body>
+</html>` )
+
     DefaultVolume = NewBasicVolume()
     DefaultVolume.Import( chc )
 

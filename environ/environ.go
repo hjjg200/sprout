@@ -9,6 +9,7 @@ const (
     AppVersion = "pre-alpha"
 
     ErrorPageTemplatePath = "template/error_page.html"
+    IndexPageTemplatePath = "template/index_page.html"
 )
 
 var Logger = util.NewLogger()

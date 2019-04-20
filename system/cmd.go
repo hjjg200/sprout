@@ -4,6 +4,7 @@ import (
     "bytes"
     "io"
     "os/exec"
+    "strings"
     "runtime"
 
     "../util"
@@ -12,7 +13,7 @@ import (
 func NewCmd( args ...string ) *exec.Cmd {
     switch runtime.GOOS {
     case "linux", "darwin":
-        return exec.Command( "bash", append( []string{ "-c" }, args... )... )
+        return exec.Command( "bash", []string{ "-c",  strings.Join( args, " " ) }... )
     case "windows":
         return exec.Command( "cmd", append( []string{ "/C" }, args... )... )
     }
@@ -25,7 +26,7 @@ func Exec( stdin io.Reader, stdout, stderr io.Writer, args ...string ) error {
     e := NewCmd( args... )
     e.Stdin  = stdin
     e.Stdout = stdout
-    
+
     // Error writer
     errbuf  := bytes.NewBuffer( nil )
     writers := []io.Writer{ errbuf }
