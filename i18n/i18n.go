@@ -186,12 +186,8 @@ func( i1 *I18n ) Localize( lcName, src string ) string {
 func( i1 *I18n ) HasLocale( lcName string ) bool {
     i1.localesMx.BeginRead()
     defer i1.localesMx.EndRead()
-    for i := range i1.locales {
-        if i == lcName {
-            return true
-        }
-    }
-    return false
+    _, ok := i1.locales[lcName]
+    return ok
 }
 
 func( i1 *I18n ) NumLocale() int {
