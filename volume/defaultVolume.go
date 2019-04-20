@@ -91,7 +91,7 @@ func init() {
     </body>
 </html>` )
 
-    DefaultVolume = NewBasicVolume()
+    DefaultVolume = newBasicVolume()
     DefaultVolume.Import( chc )
 
 }

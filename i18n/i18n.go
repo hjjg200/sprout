@@ -219,6 +219,16 @@ func( i1 *I18n ) PutLocale( locale *Locale ) {
 
 }
 
+func( i1 *I18n ) RemoveLocale( lcName string ) error {
+    if !i1.HasLocale( lcName ) {
+        return ErrLocaleNonExistent.Append( lcName )
+    }
+    i1.localizersMx.BeginWrite()
+    delete( i1.localizers, lcName )
+    i1.localizersMx.EndWrite()
+    return nil
+}
+
 func( i1 *I18n ) Locale( lcName string ) ( *Locale, bool ) {
     i1.localesMx.BeginRead()
     lc, ok := i1.locales[lcName]

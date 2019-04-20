@@ -46,33 +46,33 @@ func( cps *Compilers ) OutputOf( path string ) ( string, bool ) {
 }
 
 func( cps *Compilers ) Compile( ast *Asset ) ( *Asset, error ) {
-    
+
     ext    := filepath.Ext( ast.Name() )
     fn, ok := cps.funcs[ext]
-    
+
     if !ok {
         return nil, ErrCompileFailure.Append( ext )
     }
-    
+
     out, err := fn( ast.Bytes() )
     if err != nil {
         return nil, ErrCompileFailure.Append( err )
     }
-    
+
     outName, _ := cps.OutputOf( ast.Name() )
     rd         := bytes.NewReader( out )
     return NewAsset( outName, rd, ast.ModTime() ), nil
-    
+
 }
 
 func( cps *Compilers ) Put( in []string, out string, fn func( []byte ) ( []byte, error ) ) {
-    
+
     for _, i := range in {
         cps.funcs[i] = fn
         cps.i2o[i]   = out
     }
     cps.o2i[out] = in
-    
+
 }
 
 func init() {

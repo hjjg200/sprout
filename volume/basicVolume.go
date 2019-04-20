@@ -267,40 +267,33 @@ func( vol *BasicVolume ) EmptyPath( path string ) error {
     switch typeByPath( path ) {
     case c_typeAsset:
 
-        // Add
-        if
+        if _, ok := vol.assets[path]; ok {
+            delete( vol.assets, path )
+        }
         return nil
 
     case c_typeI18n:
 
-        // Read
-        buf := bytes.NewBuffer( nil )
-        io.Copy( buf, rd )
-
-        // Parse
-        lc := i18n.NewLocale()
-        err := lc.ParseJson( buf.Bytes() )
-        if err != nil {
-            return err
+        for lcName, p := range vol.localePath {
+            if p == path {
+                vol.i18n.RemoveLocale( lcName )
+            }
         }
-
-        // Path
-        vol.localePathMx.BeginWrite()
-        vol.localePath[lc.Name()] = path
-        vol.localePathMx.EndWrite()
-
-        // Assign
-        vol.PutLocale( lc )
         return nil
 
     case c_typeTemplate:
 
-        // Read
-        buf := bytes.NewBuffer( nil )
-        io.Copy( buf, rd )
-
-        // Add
-        return vol.PutTemplate( path, buf.String() )
+        removed := template.New( "" )
+        for _, t := range vol.templatesClone.Templates() {
+            if t.Name() != path {
+                if tr := t.Tree; tr != nil {
+                    removed.New( t.Name() ).Parse( tr.Root.String() )
+                }
+            }
+        }
+        vol.templatesClone, _ = removed.Clone()
+        vol.templates, _      = vol.templatesClone.Clone()
+        return nil
 
     default:
         return ErrInvalidPath.Append( path )

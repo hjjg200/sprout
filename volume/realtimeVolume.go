@@ -47,7 +47,7 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
                 return err2
             } else {
                 // Remove item
-                
+                return rtv.vol.EmptyPath( path )
             }
         }
         return ErrFileError.Append( path, err )

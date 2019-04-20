@@ -10,4 +10,5 @@
     - [ ] Error page, index page template
 - [ ] Use mutex in volume and i18n
 - [ ] Fix panics when request does not have space
-- [ ] Fallback volumes
+- [x] Fallback volumes
+- [ ] Elaborate volume and i18n
