@@ -23,9 +23,17 @@ type BasicVolume struct {
     localePathMx   *util.MapMutex
     templates      *template.Template
     templatesClone *template.Template
+    fallback       Volume
 }
 
 func NewBasicVolume() *BasicVolume {
+    vol := &BasicVolume{}
+    vol.Reset()
+    vol.SetFallback( DefaultVolume )
+    return vol
+}
+
+func newBasicVolume() *BasicVolume {
     vol := &BasicVolume{}
     vol.Reset()
     return vol
@@ -35,11 +43,18 @@ func NewBasicVolume() *BasicVolume {
 
 func( vol *BasicVolume ) Asset( path string ) ( *Asset ) {
     ast := vol.assets[path]
+    if ast == nil && vol.fallback != nil {
+        ast = vol.fallback.Asset( path )
+    }
     return ast
 }
 
 func( vol *BasicVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
-    return vol.i18n.Localizer( lcName )
+    lczr := vol.i18n.Localizer( lcName )
+    if lczr == nil && vol.fallback != nil {
+        lczr = vol.fallback.Localizer( lcName )
+    }
+    return lczr
 }
 
 func( vol *BasicVolume ) Template( path string ) ( *template.Template ) {
@@ -50,14 +65,23 @@ func( vol *BasicVolume ) Template( path string ) ( *template.Template ) {
      + provided the template was created as t := template.New( "" )
     /*/
 
-    if tmpl := vol.templates.Lookup( path ); tmpl != nil {
-        return tmpl
+    tmpl := vol.templates.Lookup( path )
+    if tmpl == nil && vol.fallback != nil {
+        tmpl = vol.fallback.Template( path )
     }
-    return nil
+    return tmpl
 }
 
 func( vol *BasicVolume ) I18n() *i18n.I18n {
-    return vol.i18n
+    i1 := vol.i18n
+    if i1 == nil && vol.fallback != nil {
+        i1 = vol.fallback.I18n()
+    }
+    return i1
+}
+
+func( vol *BasicVolume ) SetFallback( flb Volume ) {
+    vol.fallback = flb
 }
 
 // General
@@ -232,6 +256,56 @@ func( vol *BasicVolume ) walk( basePath string ) filepath.WalkFunc {
         return nil
 
     }
+
+}
+
+//
+
+
+func( vol *BasicVolume ) EmptyPath( path string ) error {
+
+    switch typeByPath( path ) {
+    case c_typeAsset:
+
+        // Add
+        if
+        return nil
+
+    case c_typeI18n:
+
+        // Read
+        buf := bytes.NewBuffer( nil )
+        io.Copy( buf, rd )
+
+        // Parse
+        lc := i18n.NewLocale()
+        err := lc.ParseJson( buf.Bytes() )
+        if err != nil {
+            return err
+        }
+
+        // Path
+        vol.localePathMx.BeginWrite()
+        vol.localePath[lc.Name()] = path
+        vol.localePathMx.EndWrite()
+
+        // Assign
+        vol.PutLocale( lc )
+        return nil
+
+    case c_typeTemplate:
+
+        // Read
+        buf := bytes.NewBuffer( nil )
+        io.Copy( buf, rd )
+
+        // Add
+        return vol.PutTemplate( path, buf.String() )
+
+    default:
+        return ErrInvalidPath.Append( path )
+    }
+    return nil
 
 }
 

@@ -45,6 +45,9 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
                     if err2 == nil { return nil }
                 }
                 return err2
+            } else {
+                // Remove item
+                
             }
         }
         return ErrFileError.Append( path, err )
@@ -158,6 +161,10 @@ func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template ) {
         return nil
     }
     return rtv.vol.Template( path )
+}
+
+func( rtv *RealtimeVolume ) SetFallback( vol Volume ) {
+    rtv.vol.SetFallback( vol )
 }
 
 func( rtv *RealtimeVolume ) Export() ( *cache.Cache, error ) {

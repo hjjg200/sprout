@@ -14,6 +14,9 @@ type Volume interface {
     I18n() ( *i18n.I18n )
     Localizer( string ) *i18n.Localizer
     Template( string ) *template.Template
+    
+    // Setters
+    SetFallback( Volume )
 
     // cache.Porter
     cache.Porter

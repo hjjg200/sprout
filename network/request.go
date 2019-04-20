@@ -60,6 +60,18 @@ func( req *Request ) Status() int {
     return req.status
 }
 
+func( req *Request ) Space() *Space {
+    return req.space
+}
+
+func( req *Request ) Volume() volume.Volume {
+    // Returns DefaultVolume if space is nil
+    if req.space == nil {
+        return volume.DefaultVolume
+    }
+    return req.space.Volume()
+}
+
 func( req *Request ) Vars() []string {
     return req.vars
 }
@@ -168,9 +180,8 @@ func( req *Request ) PopError( status int, err error ) {
         msg = util.HttpStatusMessages[status]
     )
 
-    if req.space.volume != nil {
-        tmpl = req.space.volume.Template( environ.ErrorPageTemplatePath )
-    }
+    tmpl = req.Volume().Template( environ.ErrorPageTemplatePath )
+
     if tmpl == nil {
         environ.Logger.Warnln( "Missing template", environ.ErrorPageTemplatePath )
         req.PopText( status, fmt.Sprintf( "%d %s", status, msg ) )

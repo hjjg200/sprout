@@ -43,7 +43,8 @@ func( hf *handlerFactory ) BasicAuth( auther func( string, string ) bool, realm 
         req.Header().Set( "WWW-Authenticate", "Basic realm=\"" + realm + "\"" )
 
         // Returns the 401 handler
-        return HandlerFactory.Status( 401 )( req )
+        req.PopBlank( 401 )
+        return true
     }
 }
 
