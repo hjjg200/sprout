@@ -10,10 +10,10 @@ import (
     "strings"
     "time"
 
-    "../environ"
-    "../i18n"
-    "../util"
-    "../volume"
+    "github.com/hjjg200/sprout/environ"
+    "github.com/hjjg200/sprout/i18n"
+    "github.com/hjjg200/sprout/util"
+    "github.com/hjjg200/sprout/volume"
 )
 
 type Request struct {

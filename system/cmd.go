@@ -7,7 +7,7 @@ import (
     "strings"
     "runtime"
 
-    "../util"
+    "github.com/hjjg200/sprout/util"
 )
 
 func NewCmd( args ...string ) *exec.Cmd {

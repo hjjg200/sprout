@@ -6,8 +6,8 @@ import (
     "sync"
     "time"
 
-    "./network"
-    "./environ"
+    "github.com/hjjg200/sprout/network"
+    "github.com/hjjg200/sprout/environ"
 )
 
 type Sprout struct {

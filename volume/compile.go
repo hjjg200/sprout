@@ -4,7 +4,7 @@ import (
     "bytes"
     "path/filepath"
 
-    "../system"
+    "github.com/hjjg200/sprout/system"
 )
 
 type Compilers struct {

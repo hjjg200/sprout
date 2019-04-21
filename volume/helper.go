@@ -4,7 +4,7 @@ import (
     "path/filepath"
     "strings"
 
-    "../util"
+    "github.com/hjjg200/sprout/util"
 )
 
 func BaseWithoutExt( path string ) string {

@@ -3,7 +3,7 @@ package system
 import (
     "runtime"
 
-    "../environ"
+    "github.com/hjjg200/sprout/environ"
 )
 
 func init() {

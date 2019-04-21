@@ -7,8 +7,8 @@ import (
     "strings"
     "regexp"
 
-    "../environ"
-    "../volume"
+    "github.com/hjjg200/sprout/environ"
+    "github.com/hjjg200/sprout/volume"
 )
 
 type Space struct {

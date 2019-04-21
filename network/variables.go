@@ -1,7 +1,7 @@
 package network
 
 import (
-    "../util"
+    "github.com/hjjg200/sprout/util"
 )
 
 var (
@@ -13,5 +13,5 @@ var (
     ErrRequestClosed = util.NewError( 500, "the request is already closed" )
     ErrDifferentStatusCode = util.NewError( 500, "attempted to write different status code" )
     ErrMalformedJson = util.NewError( 500, "the given json is malformed. Defaulting to an empty JSON object" )
-    
+
 )

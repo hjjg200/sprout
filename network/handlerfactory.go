@@ -3,7 +3,7 @@ package network
 import (
     "html/template"
 
-    "../volume"
+    "github.com/hjjg200/sprout/volume"
 )
 
 type handlerFactory struct{}

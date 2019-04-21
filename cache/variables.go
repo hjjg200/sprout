@@ -1,7 +1,7 @@
 package cache
 
 import (
-    "../util"
+    "github.com/hjjg200/sprout/util"
 )
 
 const (

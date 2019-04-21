@@ -4,8 +4,8 @@ import (
     "time"
     "runtime"
 
-    "../cache"
-    "../environ"
+    "github.com/hjjg200/sprout/cache"
+    "github.com/hjjg200/sprout/environ"
 )
 
 var DefaultVolume Volume

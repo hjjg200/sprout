@@ -3,8 +3,8 @@ package volume
 import (
     "html/template"
 
-    "../cache"
-    "../i18n"
+    "github.com/hjjg200/sprout/cache"
+    "github.com/hjjg200/sprout/i18n"
 )
 
 type Volume interface {
@@ -14,7 +14,7 @@ type Volume interface {
     I18n() ( *i18n.I18n )
     Localizer( string ) *i18n.Localizer
     Template( string ) *template.Template
-    
+
     // Setters
     SetFallback( Volume )
 

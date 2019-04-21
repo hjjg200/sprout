@@ -6,8 +6,8 @@ import (
     "path/filepath"
     "time"
 
-    "../i18n"
-    "../cache"
+    "github.com/hjjg200/sprout/i18n"
+    "github.com/hjjg200/sprout/cache"
 )
 
 type RealtimeVolume struct {

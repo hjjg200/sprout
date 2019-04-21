@@ -11,10 +11,10 @@ import (
     "sync"
     "time"
 
-    "../cache"
-    "../environ"
-    "../i18n"
-    "../util"
+    "github.com/hjjg200/sprout/cache"
+    "github.com/hjjg200/sprout/environ"
+    "github.com/hjjg200/sprout/i18n"
+    "github.com/hjjg200/sprout/util"
 )
 
 type BasicVolume struct {

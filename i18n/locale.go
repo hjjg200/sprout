@@ -4,8 +4,8 @@ import (
     "encoding/json"
     "reflect"
     "strings"
-    
-    "../util"
+
+    "github.com/hjjg200/sprout/util"
 )
 
 type Locale struct {
@@ -27,7 +27,7 @@ func( lc *Locale ) Name() string {
 }
 
 func( lc *Locale ) Set() map[string] string {
-    
+
     // Copy
     lc.setMx.BeginRead()
     buf := make( map[string] string )
@@ -35,9 +35,9 @@ func( lc *Locale ) Set() map[string] string {
         buf[k] = v
     }
     lc.setMx.EndRead()
-    
+
     return buf
-    
+
 }
 
 //
@@ -65,7 +65,7 @@ func( lc *Locale ) ParseMap( data interface{} ) error {
     // Lock
     lc.setMx.BeginWrite()
     defer lc.setMx.EndWrite()
-    
+
     // Check the Language
     val := reflect.ValueOf( data )
         // There must be one key under the root
