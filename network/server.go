@@ -79,7 +79,9 @@ func( srv *Server ) ServeRequest( req *Request ) {
             return
         }
     }
-    req.PopBlank( 404 )
+    
+    // Bad Request if not found
+    req.PopBlank( 400 )
 }
 
 func( srv *Server ) ServeHTTP( w http.ResponseWriter, r *http.Request ) {
