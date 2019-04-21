@@ -12,3 +12,4 @@
 - [x] Fallback volumes
 - [ ] Elaborate volume and i18n
     - [ ] Use mutex in volume and i18n
+- [ ] Fix error when i18n locale json is empty
