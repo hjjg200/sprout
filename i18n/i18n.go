@@ -86,9 +86,11 @@ func( i1 *I18n ) ImportDirectory( path string ) error {
     return nil
 
 }
+
 func( i1 *I18n ) L( lcName, src string ) string {
     return i1.Localize( lcName, src )
 }
+
 func( i1 *I18n ) Localize( lcName, src string ) string {
 
     // If 0 locale

@@ -43,5 +43,6 @@ var (
     ErrTemplateExport = util.NewError( 500, "unable to export the template" )
     ErrCompileFailure = util.NewError( 500, "unable to compile the given source" )
     ErrDirectoryError = util.NewError( 500, "unable to access the directory" )
-    
+    ErrItemNonExistent = util.NewError( 500, "the path resolved to nothing" )
+
 )

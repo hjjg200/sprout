@@ -261,8 +261,22 @@ func( vol *BasicVolume ) walk( basePath string ) filepath.WalkFunc {
 
 //
 
+func( vol *BasicVolume ) HasItem( path string ) bool {
 
-func( vol *BasicVolume ) EmptyPath( path string ) error {
+    for p := range vol.assets {
+        if p == path { return true }
+    }
+    for _, p := range vol.localePath {
+        if p == path { return true }
+    }
+    for _, t := range vol.templatesClone {
+        if t.Name() == path { return true }
+    }
+    return false
+
+}
+
+func( vol *BasicVolume ) RemoveItem( path string ) error {
 
     switch typeByPath( path ) {
     case c_typeAsset:
@@ -298,7 +312,7 @@ func( vol *BasicVolume ) EmptyPath( path string ) error {
     default:
         return ErrInvalidPath.Append( path )
     }
-    return nil
+    return ErrItemNonExistent.Append( path )
 
 }
 
