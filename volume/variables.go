@@ -44,5 +44,6 @@ var (
     ErrCompileFailure = util.NewError( 500, "unable to compile the given source" )
     ErrDirectoryError = util.NewError( 500, "unable to access the directory" )
     ErrItemNonExistent = util.NewError( 500, "the path resolved to nothing" )
+    ErrPathNonExistent = util.NewError( 500, "the path resolved to nothing" )
 
 )

@@ -46,11 +46,12 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
                 }
                 return err2
             } else {
-                // Remove item
+                // Remove item if there is any in the underlying volume
                 if rtv.vol.HasItem( path ) {
                     return rtv.vol.RemoveItem( path )
                 }
             }
+            return ErrPathNonExistent.Append( path )
         }
         return ErrFileError.Append( path, err )
     }
@@ -84,8 +85,8 @@ func( rtv *RealtimeVolume ) validateI18n() error {
 
     for _, path := range rtv.vol.localePath {
         err := rtv.validate( path )
-        if err != nil {
-            return err
+        if !ErrPathNonExistent.Is( err ) && err != nil {
+            return nil
         }
     }
     return nil
@@ -126,7 +127,7 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
 
 func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset ) {
     err := rtv.validate( path )
-    if err != nil {
+    if !ErrPathNonExistent.Is( err ) && err != nil {
         return nil
     }
     return rtv.vol.Asset( path )
@@ -134,7 +135,7 @@ func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset ) {
 
 func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
     err := rtv.walkI18nDirectory()
-    if err != nil {
+    if !ErrPathNonExistent.Is( err ) && err != nil {
         return nil
     }
     return rtv.vol.I18n()
@@ -145,10 +146,16 @@ func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
     // Valiate
     path, ok := rtv.vol.localePath[lcName]
     if ok {
-        rtv.validate( path )
+        err := rtv.validate( path )
+        if !ErrPathNonExistent.Is( err ) && err != nil {
+            return nil
+        }
     } else {
         // Walk
-        rtv.walkI18nDirectory()
+        err := rtv.walkI18nDirectory()
+        if !ErrPathNonExistent.Is( err ) && err != nil {
+            return nil
+        }
     }
 
     return rtv.vol.Localizer( lcName )
@@ -157,7 +164,7 @@ func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
 
 func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template ) {
     err := rtv.validate( path )
-    if err != nil {
+    if !ErrPathNonExistent.Is( err ) && err != nil {
         return nil
     }
     return rtv.vol.Template( path )

@@ -56,8 +56,11 @@ func( err1 Error ) Has( err2 Error ) bool {
     return false
 }
 
-func( err1 Error ) Is( err2 Error ) bool {
-    return err1.id == err2.id
+func( err1 Error ) Is( err2 error ) bool {
+    if Err, ok := err2.( Error ); ok {
+        return Err.id == err1.id
+    }
+    return false
 }
 
 func( err Error ) Append( args... interface{} ) Error {
