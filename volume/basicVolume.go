@@ -8,6 +8,7 @@ import (
     "os"
     "path/filepath"
     "strings"
+    "sync"
     "time"
 
     "../cache"
@@ -17,10 +18,20 @@ import (
 )
 
 type BasicVolume struct {
+    // assets
+    //  wrties: seldom
+    //  reads: frequent
+    //  size: big
+    //  => RWMutex
+    // localePath
+    //  writes: seldom
+    //  reads: seldom
+    //  size: small
+    //  => buffer
     assets         map[string] *Asset
+    assetsMu       sync.RWMutex
     i18n           *i18n.I18n
     localePath     map[string] string
-    localePathMx   *util.MapMutex
     templates      *template.Template
     templatesClone *template.Template
     fallback       Volume
@@ -42,11 +53,17 @@ func newBasicVolume() *BasicVolume {
 // Getters
 
 func( vol *BasicVolume ) Asset( path string ) ( *Asset ) {
+
+    // Lock
+    vol.assetsMu.RLock()
+    defer vol.assetsMu.RUnlock()
+
     ast := vol.assets[path]
     if ast == nil && vol.fallback != nil {
         ast = vol.fallback.Asset( path )
     }
     return ast
+
 }
 
 func( vol *BasicVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
@@ -92,9 +109,9 @@ func( vol *BasicVolume ) Reset() {
     vol.assets            = make( map[string] *Asset )
     vol.i18n              = i18n.New()
     vol.localePath        = make( map[string] string )
-    vol.localePathMx      = util.NewMapMutex()
     vol.templates         = template.New( "" )
     vol.templatesClone, _ = vol.templates.Clone()
+    vol.fallback          = nil
 
 }
 
@@ -108,6 +125,7 @@ func( vol *BasicVolume ) PutItem( path string, rd io.Reader, modTime time.Time )
         // Add
         ast := NewAsset( filepath.Base( path ), rd, modTime )
         vol.putAsset( path, ast )
+
         return nil
 
     case c_typeI18n:
@@ -124,12 +142,16 @@ func( vol *BasicVolume ) PutItem( path string, rd io.Reader, modTime time.Time )
         }
 
         // Path
-        vol.localePathMx.BeginWrite()
-        vol.localePath[lc.Name()] = path
-        vol.localePathMx.EndWrite()
+        buf2 := make( map[string] string )
+        for k, v := range vol.localePath {
+            buf2[k] = v
+        }
+        buf2[lc.Name()] = path
+        vol.localePath = buf2
 
         // Assign
         vol.PutLocale( lc )
+
         return nil
 
     case c_typeTemplate:
@@ -158,12 +180,10 @@ func( vol *BasicVolume ) PutAsset( path string, ast *Asset ) error {
 
 func( vol *BasicVolume ) putAsset( path string, ast *Asset ) {
 
-    buf := make( map[string] *Asset )
-    for k, v := range vol.assets {
-        buf[k] = v
-    }
-    buf[path] = ast
-    vol.assets = buf
+    // Put
+    vol.assetsMu.Lock()
+    vol.assets[path] = ast
+    vol.assetsMu.Unlock()
 
     // Compile
     cmp, ok := DefaultCompilers.OutputOf( path )
@@ -194,8 +214,10 @@ func( vol *BasicVolume ) PutTemplate( path string, text string ) error {
         return ErrInvalidTemplate.Append( path, err )
     }
 
+    // Put
     buf, _ := vol.templatesClone.Clone()
     vol.templates = buf
+
     return nil
 
 }
@@ -269,7 +291,7 @@ func( vol *BasicVolume ) HasItem( path string ) bool {
     for _, p := range vol.localePath {
         if p == path { return true }
     }
-    for _, t := range vol.templatesClone {
+    for _, t := range vol.templatesClone.Templates() {
         if t.Name() == path { return true }
     }
     return false
@@ -282,7 +304,9 @@ func( vol *BasicVolume ) RemoveItem( path string ) error {
     case c_typeAsset:
 
         if _, ok := vol.assets[path]; ok {
+            vol.assetsMu.Lock()
             delete( vol.assets, path )
+            vol.assetsMu.Unlock()
         }
         return nil
 
@@ -337,11 +361,9 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
 
     // i18n
     copy := make( map[string] string )
-    vol.localePathMx.BeginRead()
     for k, v := range vol.localePath {
         copy[k] = v
     }
-    vol.localePathMx.EndRead()
 
     for lcName, path := range copy {
 
@@ -384,7 +406,6 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
             return nil, ErrTemplateExport.Append( tmpl.Name(), err )
         }
 
-        println( tmpl.Name() )
         w.Write( []byte( tmpl.Tree.Root.String() ) )
         w.Close()
 

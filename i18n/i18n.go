@@ -11,15 +11,16 @@ import (
     "sort"
     "strconv"
     "strings"
-
-    "../util"
 )
 
 type I18n struct {
+    // Maps in I18n
+    //  writes: seldom
+    //  reads: frequent
+    //  size: small
+    //  => create buffer and replace
     locales map[string] *Locale
-    localesMx *util.MapMutex
     localizers map[string] *Localizer
-    localizersMx *util.MapMutex
     defaultLocale string
     cookie string
     queryParameter string
@@ -31,9 +32,7 @@ type I18n struct {
 func New() *I18n {
     return &I18n{
         locales: make( map[string] *Locale ),
-        localesMx: util.NewMapMutex(),
         localizers: make( map[string] *Localizer ),
-        localizersMx: util.NewMapMutex(),
         defaultLocale: "",
         cookie: c_defaultCookie,
         queryParameter: c_defaultQueryParameter,
@@ -94,9 +93,7 @@ func( i1 *I18n ) L( lcName, src string ) string {
 func( i1 *I18n ) Localize( lcName, src string ) string {
 
     // If 0 locale
-    i1.localesMx.BeginRead()
     length := len( i1.locales )
-    i1.localesMx.EndRead()
 
     if length == 0 {
         return src
@@ -165,9 +162,7 @@ func( i1 *I18n ) Localize( lcName, src string ) string {
                 lcName = i1.defaultLocale
             }
 
-            i1.localesMx.BeginRead()
             plc := i1.locales[lcName]
-            i1.localesMx.EndRead()
 
             if val, ok := plc.set[key]; ok {
                 src = strings.Replace(
@@ -186,75 +181,91 @@ func( i1 *I18n ) Localize( lcName, src string ) string {
 }
 
 func( i1 *I18n ) HasLocale( lcName string ) bool {
-    i1.localesMx.BeginRead()
-    defer i1.localesMx.EndRead()
     _, ok := i1.locales[lcName]
     return ok
 }
 
 func( i1 *I18n ) NumLocale() int {
-    i1.localesMx.BeginRead()
     length := len( i1.locales )
-    i1.localesMx.EndRead()
     return length
 }
 
 func( i1 *I18n ) PutLocale( locale *Locale ) {
 
     // Set it as the default locale if it is the first locale
-    i1.localesMx.BeginRead()
     length := len( i1.locales )
-    i1.localesMx.EndRead()
     if length == 0 {
         i1.defaultLocale = locale.name
     }
 
     // Put Locale
-    i1.localesMx.BeginWrite()
-    i1.locales[locale.name] = locale
-    i1.localesMx.EndWrite()
+    buf := make( map[string] *Locale )
+    for k, v := range i1.locales {
+        buf[k] = v
+    }
+    buf[locale.name] = locale
+    i1.locales = buf
 
     // Put Localizer
-    i1.localizersMx.BeginWrite()
-    i1.localizers[locale.name], _ = NewLocalizer( i1, locale.name )
-    i1.localizersMx.EndWrite()
+    buf2 := make( map[string] *Localizer )
+    for k, v := range i1.localizers {
+        buf2[k] = v
+    }
+    buf2[locale.name], _ = NewLocalizer( i1, locale.name )
+    i1.localizers = buf2
 
 }
 
 func( i1 *I18n ) RemoveLocale( lcName string ) error {
+
+    // Check
     if !i1.HasLocale( lcName ) {
         return ErrLocaleNonExistent.Append( lcName )
     }
-    i1.localizersMx.BeginWrite()
-    delete( i1.localizers, lcName )
-    i1.localizersMx.EndWrite()
+
+    // Buffer
+    buf := make( map[string] *Locale )
+    for k, v := range i1.locales {
+        buf[k] = v
+    }
+    buf2 := make( map[string] *Localizer )
+    for k, v := range i1.localizers {
+        buf2[k] = v
+    }
+
+    // Delete
+    delete( buf, lcName )
+    delete( buf2, lcName )
+
+    // Assign
+    i1.locales = buf
+    i1.localizers = buf2
+
     return nil
 }
 
 func( i1 *I18n ) Locale( lcName string ) ( *Locale, bool ) {
-    i1.localesMx.BeginRead()
     lc, ok := i1.locales[lcName]
-    i1.localesMx.EndRead()
     return lc, ok
+}
+
+func( i1 *I18n ) Locales() map[string] *Locale {
+    return i1.locales
 }
 
 func( i1 *I18n ) LocaleNames() []string {
 
-    i1.localesMx.BeginRead()
     names := make( []string, 0 )
     for lcName := range i1.locales {
         names = append( names, lcName )
     }
-    i1.localesMx.EndRead()
 
     return names
 
 }
 
 func( i1 *I18n ) Localizer( lcName string ) ( *Localizer ) {
-    i1.localizersMx.BeginRead()
     lczr := i1.localizers[lcName]
-    i1.localizersMx.EndRead()
     return lczr
 }
 
@@ -264,20 +275,18 @@ func( i1 *I18n ) DefaultLocale() string {
 
 func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
-    //
+    // Check
     if len( lcName ) == 0 {
         return ErrInvalidParameter.Append( lcName )
     }
 
-    //
-    i1.localesMx.BeginRead()
+    // Check
     _, ok := i1.locales[lcName]
-    i1.localesMx.EndRead()
     if !ok {
         return ErrLocaleNonExistent.Append( lcName )
     }
 
-    //
+    // Assign
     i1.defaultLocale = lcName
     return nil
 }
@@ -427,9 +436,7 @@ func( i1 *I18n ) ParseUrlQuery( u *url.URL ) ( string, error ) {
 func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
 
     // Check if exists
-    i1.localesMx.BeginRead()
     _, ok := i1.locales[lcName]
-    i1.localesMx.EndRead()
     if ok {
         return lcName, nil
     }
@@ -437,8 +444,6 @@ func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
     // Check if the lang exists
     split := strings.SplitN( lcName, "-", 2 )
     if len( split ) >= 1 {
-        i1.localesMx.BeginRead()
-        defer i1.localesMx.EndRead()
         for i := range i1.locales {
             if strings.HasPrefix( i, split[0] ) {
                 return i, nil

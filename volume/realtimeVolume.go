@@ -47,7 +47,9 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
                 return err2
             } else {
                 // Remove item
-                return rtv.vol.EmptyPath( path )
+                if rtv.vol.HasItem( path ) {
+                    return rtv.vol.RemoveItem( path )
+                }
             }
         }
         return ErrFileError.Append( path, err )
@@ -141,9 +143,7 @@ func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
 func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
 
     // Valiate
-    rtv.vol.localePathMx.BeginRead()
     path, ok := rtv.vol.localePath[lcName]
-    rtv.vol.localePathMx.EndRead()
     if ok {
         rtv.validate( path )
     } else {
