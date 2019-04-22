@@ -2,8 +2,8 @@ package sprout
 
 import (
     "bytes"
-    "./network"
-    "./volume"
+    "github.com/hjjg200/sprout/network"
+    "github.com/hjjg200/sprout/volume"
     "testing"
 )
 
