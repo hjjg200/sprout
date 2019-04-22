@@ -4,7 +4,9 @@
 - [x] Show 500 when template error
 - [x] Compile asset
 - [ ] Log details
-- [ ] Debug mode
+- [ ] Debug mode (really necessary for developing)
+    - [ ] Debug mode should be per space
+    - [ ] Print server-wide errors to console
 - [x] Logger - when ANSI color enabled include color codes if not exclude color codes
 - [x] Make default cache and import when creating a volume
     - [ ] Error page, index page template

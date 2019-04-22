@@ -83,8 +83,38 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
     }
     defer f.Close()
 
+
+
     // Put
     return rtv.vol.PutItem( path, f, fi.ModTime() )
+
+}
+
+func( rtv *RealtimeVolume ) validateTemplates() error {
+
+    return filepath.Walk( rtv.srcPath + "/" + c_templateDirectory, func( osPath string, fi os.FileInfo, err error ) error {
+
+        // Ignore dir
+        if fi.IsDir() {
+            return nil
+        }
+
+        // Rel
+        relPath, relErr := filepath.Rel( rtv.srcPath, osPath )
+        if relErr != nil {
+            return ErrInvalidPath.Append( relErr, "basePath:", rtv.srcPath, "osPath:", osPath )
+        }
+        relPath = filepath.ToSlash( relPath )
+
+        // Add and ignore invalid path error
+        err = rtv.validate( relPath )
+        if err != nil {
+            return err
+        }
+
+        return nil
+
+    } )
 
 }
 
@@ -170,7 +200,7 @@ func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
 }
 
 func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template ) {
-    err := rtv.validate( path )
+    err := rtv.validateTemplates()
     if !ErrPathNonExistent.Is( err ) && err != nil {
         return nil
     }
