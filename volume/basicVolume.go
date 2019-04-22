@@ -215,8 +215,7 @@ func( vol *BasicVolume ) PutTemplate( path string, text string ) error {
     }
 
     // Put
-    buf, _ := vol.templatesClone.Clone()
-    vol.templates = buf
+    vol.templates, _ = vol.templatesClone.Clone()
 
     return nil
 
@@ -234,6 +233,7 @@ func( vol *BasicVolume ) PutTemplate( path string, text string ) error {
  */
 
 func( vol *BasicVolume ) ImportDirectory( path string ) error {
+    path = filepath.ToSlash( filepath.Clean( path ) )
     return filepath.Walk( path, vol.walk( path ) )
 }
 

@@ -19,11 +19,18 @@ type RealtimeVolume struct {
 // VVOLUME METHODS
 
 func NewRealtimeVolume( srcPath string ) *RealtimeVolume {
+
+    srcPath = filepath.ToSlash( filepath.Clean( srcPath ) )
+
+    vol := NewBasicVolume()
+    vol.ImportDirectory( srcPath )
+
     return &RealtimeVolume{
-        vol: NewBasicVolume(),
+        vol: vol,
         srcPath: srcPath,
         modTime: make( map[string] time.Time ),
     }
+
 }
 
 func( rtv *RealtimeVolume ) abs( path string ) string {
