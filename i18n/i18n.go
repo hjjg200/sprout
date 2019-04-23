@@ -222,7 +222,7 @@ func( i1 *I18n ) RemoveLocale( lcName string ) error {
 
     // Check
     if !i1.HasLocale( lcName ) {
-        return errors.ErrNotFound.Append( "locale not found", lcName )
+        return errors.ErrNotFound.Raise( "locale not found", lcName )
     }
 
     // Buffer
@@ -279,13 +279,13 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
     // Check
     if len( lcName ) == 0 {
-        return errors.ErrInvalidParameter.Append( lcName )
+        return errors.ErrInvalidParameter.Raise( lcName )
     }
 
     // Check
     _, ok := i1.locales[lcName]
     if !ok {
-        return errors.ErrInvalidParameter.Append( lcName )
+        return errors.ErrInvalidParameter.Raise( lcName )
     }
 
     // Assign
@@ -295,7 +295,7 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
 func( i1 *I18n ) SetQueryParameter( param string ) error {
     if len( param ) == 0 {
-        return errors.ErrInvalidParameter.Append( param )
+        return errors.ErrInvalidParameter.Raise( param )
     }
     i1.queryParameter = param
     return nil
@@ -303,7 +303,7 @@ func( i1 *I18n ) SetQueryParameter( param string ) error {
 
 func( i1 *I18n ) SetCookie( cookie string ) error {
     if len( cookie ) == 0 {
-        return errors.ErrInvalidParameter.Append( cookie )
+        return errors.ErrInvalidParameter.Raise( cookie )
     }
     i1.cookie = cookie
     return nil
@@ -311,7 +311,7 @@ func( i1 *I18n ) SetCookie( cookie string ) error {
 
 func( i1 *I18n ) SetDelimiters( left, right string ) error {
     if len( left ) == 0 || len( right ) == 0 {
-        return errors.ErrInvalidParameter.Append( left, right )
+        return errors.ErrInvalidParameter.Raise( left, right )
     }
     i1.leftDelimiter = left
     i1.rightDelimiter = right
@@ -349,7 +349,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
             qFactor, err := strconv.ParseFloat( split[i][semicolon + 3:], 64 )
             if err != nil {
                 //panic( err )
-                return "", errors.ErrMalformedAcceptLang.Append( acptLng, err ) // Malformed accept-language
+                return "", errors.ErrMalformedAcceptLang.Raise( acptLng, err ) // Malformed accept-language
             }
             entries = append( entries, acceptLanguageEntry{
                 locale: lcName,
@@ -383,7 +383,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
     }
 
     // If not found
-    return "", errors.ErrNotFound.Append( "locale not found for", acptLng )
+    return "", errors.ErrNotFound.Raise( "locale not found for", acptLng )
 
 }
 
@@ -394,12 +394,12 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
         if cks[i].Name == i1.cookie {
             lcName, err := i1.ParseSingleLocale( cks[i].Value )
             if err != nil {
-                return "", errors.ErrNotFound.Append( "locale not found", cks[i].Value )
+                return "", errors.ErrNotFound.Raise( "locale not found", cks[i].Value )
             }
             return lcName, nil
         }
     }
-    return "", errors.ErrNotFound.Append( "locale not found" )
+    return "", errors.ErrNotFound.Raise( "locale not found" )
 
 }
 
@@ -407,7 +407,7 @@ func( i1 *I18n ) ParseUrlPath( u *url.URL ) ( string, error ) {
 
     // If too short
     if len( u.Path ) == 1 {
-        return "", errors.ErrNotFound.Append( "locale not found" )
+        return "", errors.ErrNotFound.Raise( "locale not found" )
     }
 
     // Parse
@@ -424,7 +424,7 @@ func( i1 *I18n ) ParseUrlQuery( u *url.URL ) ( string, error ) {
 
     //
     if lcName == "" {
-        return "", errors.ErrNotFound.Append( "query parameter not found" )
+        return "", errors.ErrNotFound.Raise( "query parameter not found" )
     } else {
         lcName, err := i1.ParseSingleLocale( lcName )
         if err != nil {
@@ -454,6 +454,6 @@ func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
     }
 
     // Return default
-    return "", errors.ErrNotFound.Append( "locale not found" )
+    return "", errors.ErrNotFound.Raise( "locale not found" )
 
 }

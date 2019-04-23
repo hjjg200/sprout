@@ -84,7 +84,7 @@ func( req *Request ) Write( p []byte ) ( int, error ) {
 func( req *Request ) SetStatus( status int ) {
 
     if req.wroteHeader {
-        environ.Logger.Panicln( errors.ErrDifferentStatusCode.Append( "ID", req.ID() ) )
+        environ.Logger.Panicln( errors.ErrDifferentStatusCode.Raise( "ID", req.ID() ) )
     }
 
     req.wroteHeader = true
@@ -266,7 +266,7 @@ func( req *Request ) popJson( status int, obj interface{}, pretty bool ) {
 
     // Error
     if err != nil {
-        req.PopError( 500, errors.ErrMalformedJson.Append( err ) )
+        req.PopError( 500, errors.ErrMalformedJson.Raise( err ) )
     }
 
     req.Pop( status, string( p ), "text/json;charset=utf-8" )

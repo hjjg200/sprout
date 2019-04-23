@@ -12,4 +12,7 @@ const (
     IndexPageTemplatePath = "template/index_page.html"
 )
 
-var Logger = util.NewLogger()
+var (
+    Debug = false
+    Logger = util.NewLogger()
+)

@@ -145,7 +145,7 @@ func( spc *Space ) WithReverseProxy( target string ) {
     spc.WithHandler( func( req *Request ) bool {
 
         if err != nil {
-            req.PopError( 502, errors.ErrReverseProxy.Append( target ) )
+            req.PopError( 502, errors.ErrReverseProxy.Raise( target ) )
         }
 
         // Log

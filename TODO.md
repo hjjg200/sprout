@@ -20,3 +20,5 @@
     - [ ] funcMap asset markdown
 - [ ] fix realtimeVolume
     - [ ] the temporary measure: ErrNotFound.Is( ... )
+- [ ] Asset handling
+    - [ ] Add ?v= (query) to url; redirect when v doesn't match the current v

@@ -52,12 +52,12 @@ func( cps *Compilers ) Compile( ast *Asset ) ( *Asset, error ) {
     fn, ok := cps.funcs[ext]
 
     if !ok {
-        return nil, errors.ErrCompileFailure.Append( ext )
+        return nil, errors.ErrCompileFailure.Raise( ext )
     }
 
     out, err := fn( ast.Bytes() )
     if err != nil {
-        return nil, errors.ErrCompileFailure.Append( err )
+        return nil, errors.ErrCompileFailure.Raise( err )
     }
 
     outName, _ := cps.OutputOf( ast.Name() )
@@ -91,7 +91,7 @@ func CompileScss( in []byte ) ( []byte, error ) {
     err := system.Exec( sti, sto, nil, "sass", "--stdin", "--style=compressed" )
 
     if err != nil {
-        return nil, errors.ErrCompileFailure.Append( "sass", err )
+        return nil, errors.ErrCompileFailure.Raise( "sass", err )
     }
 
     return sto.Bytes(), nil

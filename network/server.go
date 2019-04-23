@@ -35,7 +35,7 @@ func( srv *Server ) SetAddr( addr string ) {
 }
 
 func( srv *Server ) SetPort( port int16 ) {
-    srv.addr = fmt.Sprintf( ":%d", port )
+    srv.addr = fmt.Sprintf( "0.0.0.0:%d", port )
 }
 
 func( srv *Server ) Body() *http.Server {
@@ -95,7 +95,7 @@ func( srv *Server ) Start() error {
     // Listener
     ln, err := net.Listen( "tcp", srv.addr )
     if err != nil {
-        return errors.ErrServerOperation.Append( "starting server", "addr:", srv.addr, "err:", err )
+        return errors.ErrServerOperation.Raise( "starting server", "addr:", srv.addr, "err:", err )
     }
 
     // Serve
@@ -105,7 +105,7 @@ func( srv *Server ) Start() error {
         err = srv.body.Serve( ln )
     }
 
-    return errors.ErrServerExited.Append( "addr:", srv.addr, "err:", err )
+    return errors.ErrServerExited.Raise( "addr:", srv.addr, "err:", err )
 
 }
 
@@ -114,7 +114,7 @@ func( srv *Server ) Stop() error {
     //
     err := srv.body.Shutdown( context.Background() )
     if err != nil {
-        return errors.ErrServerOperation.Append( "err:", err )
+        return errors.ErrServerOperation.Raise( "err:", err )
     }
     return nil
 

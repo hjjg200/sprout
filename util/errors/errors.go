@@ -4,6 +4,8 @@ import (
     "fmt"
     "path/filepath"
     "runtime"
+
+    "github.com/hjjg200/sprout/environ"
 )
 
 type Error struct {
@@ -16,7 +18,7 @@ func New( base Error, args ...interface{} ) Error {
 
     // Details
     Err := Error{ typ: base.typ }
-    Err.Append( args... )
+    Err.Raise( args... )
 
     // Return
     return Err
@@ -24,7 +26,7 @@ func New( base Error, args ...interface{} ) Error {
 }
 
 func caller() string {
-    _, file, no, ok := runtime.Caller( 2 )
+    _, file, no, ok := runtime.Caller( 3 )
     if !ok {
         return ""
     }
@@ -62,7 +64,16 @@ func( Err Error ) Is( other interface{} ) bool {
     return Err.typ == Other.typ
 }
 
-func( Err Error ) Append( args ...interface{} ) Error {
+func( Err Error ) Raise( args ...interface{} ) Error {
+    // Raise error and return
+    Err = Err.append( args... )
+    if environ.Debug {
+        environ.Logger.Warnln( Err )
+    }
+    return Err
+}
+
+func( Err Error ) append( args ...interface{} ) Error {
 
     // Newline
     if Err.details != "" {

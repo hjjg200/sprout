@@ -86,7 +86,7 @@ func( e *entry ) Open() ( io.ReadCloser, error ) {
     // Open
     rc, err := e.file.Open()
     if err != nil {
-        return nil, errors.ErrIOError.Append( "failed to access", e.Name )
+        return nil, errors.ErrIOError.Raise( "failed to access", e.Name )
     }
     return &entryReadCloser{
         rc: rc,
@@ -146,7 +146,7 @@ func( chc *Cache ) Create( path string, mt time.Time ) ( io.WriteCloser, error )
         Modified: mt,
     } )
     if err != nil {
-        return nil, errors.ErrIOError.Append( "failed to write", path )
+        return nil, errors.ErrIOError.Raise( "failed to write", path )
     }
     return &entryWriter{
         wr: wr,

@@ -4,10 +4,13 @@ import (
     "bytes"
     "github.com/hjjg200/sprout/network"
     "github.com/hjjg200/sprout/volume"
+    "github.com/hjjg200/sprout/environ"
     "testing"
 )
 
 func TestSprout01( t *testing.T ) {
+
+    environ.Debug = true
 
     sprt := New()
 

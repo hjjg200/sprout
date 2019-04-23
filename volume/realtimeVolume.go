@@ -59,9 +59,9 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
                     return rtv.vol.RemoveItem( path )
                 }
             }
-            return errors.ErrNotFound.Append( path )
+            return errors.ErrNotFound.Raise( path )
         }
-        return errors.ErrIOError.Append( path, err )
+        return errors.ErrIOError.Raise( path, err )
     }
 
     mt, ok := rtv.modTime[path]
@@ -80,7 +80,7 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
     // Write
     f, err := os.Open( absPath )
     if err != nil {
-        return errors.ErrIOError.Append( absPath, err )
+        return errors.ErrIOError.Raise( absPath, err )
     }
     defer f.Close()
 
@@ -103,7 +103,7 @@ func( rtv *RealtimeVolume ) validateTemplates() error {
         // Rel
         relPath, relErr := filepath.Rel( rtv.srcPath, osPath )
         if relErr != nil {
-            return errors.ErrInvalidPath.Append( "relErr:", relErr, "basePath:", rtv.srcPath, "osPath:", osPath )
+            return errors.ErrInvalidPath.Raise( "relErr:", relErr, "basePath:", rtv.srcPath, "osPath:", osPath )
         }
         relPath = filepath.ToSlash( relPath )
 
@@ -138,9 +138,9 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
     { // Ensure the i18n Directory
         fi, err := os.Stat( i18nDir )
         if err != nil {
-            return errors.ErrIOError.Append( i18nDir, err )
+            return errors.ErrIOError.Raise( i18nDir, err )
         } else if !fi.IsDir() {
-            return errors.ErrIOError.Append( i18nDir, "it is not a directory" )
+            return errors.ErrIOError.Raise( i18nDir, "it is not a directory" )
         }
     }
 
@@ -149,7 +149,7 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
         // Rel
         relPath, relErr := filepath.Rel( rtv.srcPath, absPath )
         if relErr != nil {
-            return errors.ErrInvalidPath.Append( relErr, relPath )
+            return errors.ErrInvalidPath.Raise( relErr, relPath )
         }
         if fi.IsDir() {
             return nil

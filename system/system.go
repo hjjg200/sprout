@@ -13,7 +13,7 @@ func init() {
     switch runtime.GOOS {
     case "windows", "linux", "darwin":
     default:
-        environ.Logger.Panicln( errors.ErrOSNotSupported.Append( runtime.GOOS ) )
+        environ.Logger.Panicln( errors.ErrOSNotSupported.Raise( runtime.GOOS ) )
     }
 
 }
