@@ -8,6 +8,7 @@ import (
     "regexp"
 
     "github.com/hjjg200/sprout/environ"
+    "github.com/hjjg200/sprout/util/errors"
     "github.com/hjjg200/sprout/volume"
 )
 
@@ -144,7 +145,7 @@ func( spc *Space ) WithReverseProxy( target string ) {
     spc.WithHandler( func( req *Request ) bool {
 
         if err != nil {
-            req.PopError( 502, err )
+            req.PopError( 502, errors.ErrReverseProxy.Append( target ) )
         }
 
         // Log

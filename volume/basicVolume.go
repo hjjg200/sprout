@@ -14,7 +14,7 @@ import (
     "github.com/hjjg200/sprout/cache"
     "github.com/hjjg200/sprout/environ"
     "github.com/hjjg200/sprout/i18n"
-    "github.com/hjjg200/sprout/util"
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 type BasicVolume struct {
@@ -138,7 +138,7 @@ func( vol *BasicVolume ) PutItem( path string, rd io.Reader, modTime time.Time )
         lc := i18n.NewLocale()
         err := lc.ParseJson( buf.Bytes() )
         if err != nil {
-            return err
+            return errors.ErrInvalidObject.Append( err )
         }
 
         // Path
@@ -164,7 +164,7 @@ func( vol *BasicVolume ) PutItem( path string, rd io.Reader, modTime time.Time )
         return vol.PutTemplate( path, buf.String() )
 
     default:
-        return ErrInvalidPath.Append( path )
+        return errors.ErrInvalidPath.Append( path )
     }
     return nil
 
@@ -172,7 +172,7 @@ func( vol *BasicVolume ) PutItem( path string, rd io.Reader, modTime time.Time )
 
 func( vol *BasicVolume ) PutAsset( path string, ast *Asset ) error {
     if !strings.HasPrefix( path, c_assetDirectory ) {
-        return ErrInvalidPath.Append( path )
+        return errors.ErrInvalidPath.Append( path )
     }
     vol.putAsset( path, ast )
     return nil
@@ -190,7 +190,7 @@ func( vol *BasicVolume ) putAsset( path string, ast *Asset ) {
     if ok {
         cmpAst, err := DefaultCompilers.Compile( ast )
         if err != nil {
-            environ.Logger.Warnln( ErrCompileFailure.Append( err ) )
+            environ.Logger.Warnln( errors.ErrCompileFailure.Append( err ) )
         }
         vol.putAsset( cmp, cmpAst )
     }
@@ -205,13 +205,13 @@ func( vol *BasicVolume ) PutTemplate( path string, text string ) error {
 
     // Check path
     if !strings.HasPrefix( path, c_templateDirectory ) {
-        return ErrInvalidPath.Append( path )
+        return errors.ErrInvalidPath.Append( path )
     }
 
     // Clone
     _, err := vol.templatesClone.New( path ).Parse( text )
     if err != nil {
-        return ErrInvalidTemplate.Append( path, err )
+        return errors.ErrInvalidObject.Append( "invalid template", path, err )
     }
 
     // Put
@@ -249,30 +249,27 @@ func( vol *BasicVolume ) walk( basePath string ) filepath.WalkFunc {
         // Rel
         relPath, relErr := filepath.Rel( basePath, osPath )
         if relErr != nil {
-            return ErrInvalidPath.Append( relErr, "basePath:", basePath, "osPath:", osPath )
+            return errors.ErrInvalidPath.Append( "relErr:", relErr, "basePath:", basePath, "osPath:", osPath )
         }
         relPath = filepath.ToSlash( relPath )
 
         // Open
         f, err := os.Open( osPath )
         if err != nil {
-            return ErrFileError.Append( osPath )
+            return errors.ErrIOError.Append( osPath )
         }
 
         // Add and ignore invalid path error
         err = vol.PutItem( relPath, f, fi.ModTime() )
-        if cast, ok := err.( util.Error ); ok {
-            if !cast.Is( ErrInvalidPath ) {
-                return err
-            }
-        } else {
+        if !errors.ErrInvalidPath.Is( err ) {
+            // Ignore invalid path errors
             return err
         }
 
         // Close
         err = f.Close()
         if err != nil {
-            return ErrFileError.Append( err )
+            return errors.ErrIOError.Append( err )
         }
 
         return nil
@@ -334,9 +331,9 @@ func( vol *BasicVolume ) RemoveItem( path string ) error {
         return nil
 
     default:
-        return ErrInvalidPath.Append( path )
+        return errors.ErrInvalidPath.Append( path )
     }
-    return ErrItemNonExistent.Append( path )
+    return errors.ErrNotFound.Append( path )
 
 }
 
@@ -352,7 +349,7 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
 
         w, err := chc.Create( path, ast.modTime )
         if err != nil {
-            return nil, ErrAssetExport.Append( path, err )
+            return nil, errors.ErrExportFailure.Append( path, err )
         }
         w.Write( ast.Bytes() )
         w.Close()
@@ -370,13 +367,13 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
         // Create
         w, err := chc.Create( path, zero )
         if err != nil {
-            return nil, ErrI18nExport.Append( lcName, err )
+            return nil, errors.ErrExportFailure.Append( lcName, err )
         }
 
         //
         lc, ok := vol.i18n.Locale( lcName )
         if !ok {
-            return nil, ErrI18nExport.Append( lcName, "the locale is unavailable" )
+            return nil, errors.ErrExportFailure.Append( lcName, "the locale is unavailable" )
         }
 
         // Json
@@ -403,7 +400,7 @@ func( vol *BasicVolume ) Export() ( *cache.Cache, error ) {
         // Create
         w, err := chc.Create( tmpl.Name(), zero )
         if err != nil {
-            return nil, ErrTemplateExport.Append( tmpl.Name(), err )
+            return nil, errors.ErrExportFailure.Append( tmpl.Name(), err )
         }
 
         w.Write( []byte( tmpl.Tree.Root.String() ) )
@@ -423,13 +420,13 @@ func( vol *BasicVolume ) Import( chc *cache.Cache ) error {
         // Open
         rc, err := f.Open()
         if err != nil {
-            return ErrZipImport.Append( f.Name, err )
+            return errors.ErrImportFailure.Append( f.Name, err )
         }
 
         // Put
         err = vol.PutItem( f.Name, rc, f.Modified )
         if err != nil {
-            return ErrZipImport.Append( err )
+            return errors.ErrImportFailure.Append( err )
         }
 
     }

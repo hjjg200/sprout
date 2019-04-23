@@ -6,6 +6,7 @@ import (
     "strings"
 
     "github.com/hjjg200/sprout/util"
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 type Locale struct {
@@ -54,7 +55,7 @@ func( lc *Locale ) ParseJson( data []byte ) error {
     var ifc interface{}
     err := json.Unmarshal( data, &ifc )
     if err != nil {
-        return err
+        return errors.ErrMalformedJson.Append( err )
     }
 
     return lc.ParseMap( ifc )
@@ -70,7 +71,7 @@ func( lc *Locale ) ParseMap( data interface{} ) error {
     val := reflect.ValueOf( data )
         // There must be one key under the root
     if len( val.MapKeys() ) > 1 {
-        return ErrMalformedJson
+        return errors.ErrMalformedJson.Append( "no language key found" )
     }
         // Language is the key name of the key
     lang := val.MapKeys()[0].String()
@@ -81,7 +82,7 @@ func( lc *Locale ) ParseMap( data interface{} ) error {
     default:
         rChild = reflect.ValueOf( cast )
         if rChild.Kind() != reflect.Map {
-            return ErrMalformedJson
+            return errors.ErrMalformedJson.Append( "there are no sets in the json" )
         }
     }
 

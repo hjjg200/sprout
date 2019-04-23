@@ -6,6 +6,7 @@ import (
     "io"
     "time"
 
+    "github.com/hjjg200/sprout/util/errors"
     "github.com/hjjg200/together"
 )
 
@@ -85,7 +86,7 @@ func( e *entry ) Open() ( io.ReadCloser, error ) {
     // Open
     rc, err := e.file.Open()
     if err != nil {
-        return nil, ErrEntryAccessFailed.Append( e.Name )
+        return nil, errors.ErrIOError.Append( "failed to access", e.Name )
     }
     return &entryReadCloser{
         rc: rc,
@@ -145,7 +146,7 @@ func( chc *Cache ) Create( path string, mt time.Time ) ( io.WriteCloser, error )
         Modified: mt,
     } )
     if err != nil {
-        return nil, ErrEntryWriteFail.Append( path )
+        return nil, errors.ErrIOError.Append( "failed to write", path )
     }
     return &entryWriter{
         wr: wr,

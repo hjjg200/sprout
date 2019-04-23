@@ -5,6 +5,8 @@ import (
     "fmt"
     "net"
     "net/http"
+
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 type Server struct {
@@ -79,7 +81,7 @@ func( srv *Server ) ServeRequest( req *Request ) {
             return
         }
     }
-    
+
     // Bad Request if not found
     req.PopBlank( 400 )
 }
@@ -93,7 +95,7 @@ func( srv *Server ) Start() error {
     // Listener
     ln, err := net.Listen( "tcp", srv.addr )
     if err != nil {
-        return ErrStartingServer.Append( "addr:", srv.addr, "err:", err )
+        return errors.ErrServerOperation.Append( "starting server", "addr:", srv.addr, "err:", err )
     }
 
     // Serve
@@ -103,7 +105,7 @@ func( srv *Server ) Start() error {
         err = srv.body.Serve( ln )
     }
 
-    return ErrServerExited.Append( "addr:", srv.addr, "err:", err )
+    return errors.ErrServerExited.Append( "addr:", srv.addr, "err:", err )
 
 }
 
@@ -112,7 +114,7 @@ func( srv *Server ) Stop() error {
     //
     err := srv.body.Shutdown( context.Background() )
     if err != nil {
-        return ErrStoppingServer.Append( "err:", err )
+        return errors.ErrServerOperation.Append( "err:", err )
     }
     return nil
 

@@ -4,6 +4,7 @@ import (
     "runtime"
 
     "github.com/hjjg200/sprout/environ"
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 func init() {
@@ -12,7 +13,7 @@ func init() {
     switch runtime.GOOS {
     case "windows", "linux", "darwin":
     default:
-        environ.Logger.Panicln( ErrOSNotSupported.Append( runtime.GOOS ) )
+        environ.Logger.Panicln( errors.ErrOSNotSupported.Append( runtime.GOOS ) )
     }
 
 }

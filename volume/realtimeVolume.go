@@ -8,6 +8,7 @@ import (
 
     "github.com/hjjg200/sprout/i18n"
     "github.com/hjjg200/sprout/cache"
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 type RealtimeVolume struct {
@@ -58,9 +59,9 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
                     return rtv.vol.RemoveItem( path )
                 }
             }
-            return ErrPathNonExistent.Append( path )
+            return errors.ErrNotFound.Append( path )
         }
-        return ErrFileError.Append( path, err )
+        return errors.ErrIOError.Append( path, err )
     }
 
     mt, ok := rtv.modTime[path]
@@ -79,7 +80,7 @@ func( rtv *RealtimeVolume ) validate( path string ) error {
     // Write
     f, err := os.Open( absPath )
     if err != nil {
-        return ErrFileError.Append( absPath, err )
+        return errors.ErrIOError.Append( absPath, err )
     }
     defer f.Close()
 
@@ -102,13 +103,13 @@ func( rtv *RealtimeVolume ) validateTemplates() error {
         // Rel
         relPath, relErr := filepath.Rel( rtv.srcPath, osPath )
         if relErr != nil {
-            return ErrInvalidPath.Append( relErr, "basePath:", rtv.srcPath, "osPath:", osPath )
+            return errors.ErrInvalidPath.Append( "relErr:", relErr, "basePath:", rtv.srcPath, "osPath:", osPath )
         }
         relPath = filepath.ToSlash( relPath )
 
         // Add and ignore invalid path error
         err = rtv.validate( relPath )
-        if err != nil {
+        if !errors.ErrInvalidPath.Is( err ) {
             return err
         }
 
@@ -122,7 +123,7 @@ func( rtv *RealtimeVolume ) validateI18n() error {
 
     for _, path := range rtv.vol.localePath {
         err := rtv.validate( path )
-        if !ErrPathNonExistent.Is( err ) && err != nil {
+        if !errors.ErrNotFound.Is( err ) && err != nil {
             return nil
         }
     }
@@ -137,9 +138,9 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
     { // Ensure the i18n Directory
         fi, err := os.Stat( i18nDir )
         if err != nil {
-            return ErrDirectoryError.Append( i18nDir, err )
+            return errors.ErrIOError.Append( i18nDir, err )
         } else if !fi.IsDir() {
-            return ErrDirectoryError.Append( i18nDir, "it is not a directory" )
+            return errors.ErrIOError.Append( i18nDir, "it is not a directory" )
         }
     }
 
@@ -148,7 +149,7 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
         // Rel
         relPath, relErr := filepath.Rel( rtv.srcPath, absPath )
         if relErr != nil {
-            return relErr
+            return errors.ErrInvalidPath.Append( relErr, relPath )
         }
         if fi.IsDir() {
             return nil
@@ -164,7 +165,7 @@ func( rtv *RealtimeVolume ) walkI18nDirectory() error {
 
 func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset ) {
     err := rtv.validate( path )
-    if !ErrPathNonExistent.Is( err ) && err != nil {
+    if !errors.ErrNotFound.Is( err ) && err != nil {
         return nil
     }
     return rtv.vol.Asset( path )
@@ -172,7 +173,7 @@ func( rtv *RealtimeVolume ) Asset( path string ) ( *Asset ) {
 
 func( rtv *RealtimeVolume ) I18n() ( *i18n.I18n ) {
     err := rtv.walkI18nDirectory()
-    if !ErrPathNonExistent.Is( err ) && err != nil {
+    if !errors.ErrNotFound.Is( err ) && err != nil {
         return nil
     }
     return rtv.vol.I18n()
@@ -184,13 +185,13 @@ func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
     path, ok := rtv.vol.localePath[lcName]
     if ok {
         err := rtv.validate( path )
-        if !ErrPathNonExistent.Is( err ) && err != nil {
+        if !errors.ErrNotFound.Is( err ) && err != nil {
             return nil
         }
     } else {
         // Walk
         err := rtv.walkI18nDirectory()
-        if !ErrPathNonExistent.Is( err ) && err != nil {
+        if !errors.ErrNotFound.Is( err ) && err != nil {
             return nil
         }
     }
@@ -201,7 +202,7 @@ func( rtv *RealtimeVolume ) Localizer( lcName string ) ( *i18n.Localizer ) {
 
 func( rtv *RealtimeVolume ) Template( path string ) ( *template.Template ) {
     err := rtv.validateTemplates()
-    if !ErrPathNonExistent.Is( err ) && err != nil {
+    if !errors.ErrNotFound.Is( err ) && err != nil {
         return nil
     }
     return rtv.vol.Template( path )

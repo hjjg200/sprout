@@ -11,6 +11,8 @@ import (
     "sort"
     "strconv"
     "strings"
+
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 type I18n struct {
@@ -220,7 +222,7 @@ func( i1 *I18n ) RemoveLocale( lcName string ) error {
 
     // Check
     if !i1.HasLocale( lcName ) {
-        return ErrLocaleNonExistent.Append( lcName )
+        return errors.ErrNotFound.Append( "locale not found", lcName )
     }
 
     // Buffer
@@ -277,13 +279,13 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
     // Check
     if len( lcName ) == 0 {
-        return ErrInvalidParameter.Append( lcName )
+        return errors.ErrInvalidParameter.Append( lcName )
     }
 
     // Check
     _, ok := i1.locales[lcName]
     if !ok {
-        return ErrLocaleNonExistent.Append( lcName )
+        return errors.ErrInvalidParameter.Append( lcName )
     }
 
     // Assign
@@ -293,7 +295,7 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
 func( i1 *I18n ) SetQueryParameter( param string ) error {
     if len( param ) == 0 {
-        return ErrInvalidParameter.Append( param )
+        return errors.ErrInvalidParameter.Append( param )
     }
     i1.queryParameter = param
     return nil
@@ -301,7 +303,7 @@ func( i1 *I18n ) SetQueryParameter( param string ) error {
 
 func( i1 *I18n ) SetCookie( cookie string ) error {
     if len( cookie ) == 0 {
-        return ErrInvalidParameter.Append( cookie )
+        return errors.ErrInvalidParameter.Append( cookie )
     }
     i1.cookie = cookie
     return nil
@@ -309,7 +311,7 @@ func( i1 *I18n ) SetCookie( cookie string ) error {
 
 func( i1 *I18n ) SetDelimiters( left, right string ) error {
     if len( left ) == 0 || len( right ) == 0 {
-        return ErrInvalidDelimiters.Append( left, right )
+        return errors.ErrInvalidParameter.Append( left, right )
     }
     i1.leftDelimiter = left
     i1.rightDelimiter = right
@@ -347,7 +349,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
             qFactor, err := strconv.ParseFloat( split[i][semicolon + 3:], 64 )
             if err != nil {
                 //panic( err )
-                return "", err // Malformed accept-language
+                return "", errors.ErrMalformedAcceptLang.Append( acptLng, err ) // Malformed accept-language
             }
             entries = append( entries, acceptLanguageEntry{
                 locale: lcName,
@@ -381,7 +383,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
     }
 
     // If not found
-    return "", ErrLocaleNonExistent.Append( acptLng )
+    return "", errors.ErrNotFound.Append( "locale not found for", acptLng )
 
 }
 
@@ -392,12 +394,12 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
         if cks[i].Name == i1.cookie {
             lcName, err := i1.ParseSingleLocale( cks[i].Value )
             if err != nil {
-                return "", ErrLocaleNonExistent.Append( cks[i].Value )
+                return "", errors.ErrNotFound.Append( "locale not found", cks[i].Value )
             }
             return lcName, nil
         }
     }
-    return "", ErrCookieNonExistent
+    return "", errors.ErrNotFound.Append( "locale not found" )
 
 }
 
@@ -405,7 +407,7 @@ func( i1 *I18n ) ParseUrlPath( u *url.URL ) ( string, error ) {
 
     // If too short
     if len( u.Path ) == 1 {
-        return "", ErrUrlHasNoLocale
+        return "", errors.ErrNotFound.Append( "locale not found" )
     }
 
     // Parse
@@ -422,7 +424,7 @@ func( i1 *I18n ) ParseUrlQuery( u *url.URL ) ( string, error ) {
 
     //
     if lcName == "" {
-        return "", ErrQueryNonExistent
+        return "", errors.ErrNotFound.Append( "query parameter not found" )
     } else {
         lcName, err := i1.ParseSingleLocale( lcName )
         if err != nil {
@@ -452,6 +454,6 @@ func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
     }
 
     // Return default
-    return "", ErrLocaleNonExistent
+    return "", errors.ErrNotFound.Append( "locale not found" )
 
 }

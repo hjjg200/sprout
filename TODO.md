@@ -17,4 +17,6 @@
 - [ ] Fix error when i18n locale json is empty
 - [ ] Template
     - [ ] new extensions .md .css .js
-    - [ ] funcMap asset markdown 
+    - [ ] funcMap asset markdown
+- [ ] fix realtimeVolume
+    - [ ] the temporary measure: ErrNotFound.Is( ... )

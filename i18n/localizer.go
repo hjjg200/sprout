@@ -1,5 +1,9 @@
 package i18n
 
+import (
+    "github.com/hjjg200/sprout/util/errors"
+)
+
 /*
  + Localizer
  *
@@ -13,7 +17,7 @@ type Localizer struct {
 
 func NewLocalizer( i1 *I18n, lcName string ) ( *Localizer, error ) {
     if !i1.HasLocale( lcName ) {
-        return nil, ErrLocaleNonExistent.Append( lcName )
+        return nil, errors.ErrNotFound.Append( "locale not found", lcName )
     }
     return &Localizer{
         parent: i1,

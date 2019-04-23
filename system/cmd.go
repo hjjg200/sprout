@@ -7,7 +7,7 @@ import (
     "strings"
     "runtime"
 
-    "github.com/hjjg200/sprout/util"
+    "github.com/hjjg200/sprout/util/errors"
 )
 
 func NewCmd( args ...string ) *exec.Cmd {
@@ -40,7 +40,7 @@ func Exec( stdin io.Reader, stdout, stderr io.Writer, args ...string ) error {
 
     // Check err
     if err != nil {
-        return util.NewError( 500, err, errbuf.String() )
+        return errors.ErrCmdExecFailure.Append( err, errbuf.String() )
     }
 
     return nil
@@ -68,7 +68,7 @@ func DoesCommandExist( cmd string ) ( bool, error ) {
     err = e.Run()
 
     if err != nil {
-        return false, err
+        return false, errors.ErrCmdExecFailure.Append( err )
     }
 
     r := out.String()

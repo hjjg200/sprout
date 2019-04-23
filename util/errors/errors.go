@@ -41,17 +41,25 @@ func( Err Error ) Error() string {
     return fmt.Sprint( Err.typ + ": " + Err.details )
 }
 
-func( Err Error ) Has( other Error ) bool {
+func( Err Error ) Has( other interface{} ) bool {
+    Other, ok := other.( Error )
+    if !ok {
+        return false
+    }
     for _, child := range Err.children {
-        if child.typ == other.typ {
+        if child.typ == Other.typ {
             return true
         }
     }
     return false
 }
 
-func( Err Error ) Is( other Error ) bool {
-    return Err.typ == other.typ
+func( Err Error ) Is( other interface{} ) bool {
+    Other, ok := other.( Error )
+    if !ok {
+        return false
+    }
+    return Err.typ == Other.typ
 }
 
 func( Err Error ) Append( args ...interface{} ) Error {
