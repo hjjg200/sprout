@@ -17,7 +17,7 @@ type Localizer struct {
 
 func NewLocalizer( i1 *I18n, lcName string ) ( *Localizer, error ) {
     if !i1.HasLocale( lcName ) {
-        return nil, errors.ErrNotFound.Raise( "locale not found", lcName )
+        return nil, errors.ErrNotFound.Append( "locale not found", lcName )
     }
     return &Localizer{
         parent: i1,

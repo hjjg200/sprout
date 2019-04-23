@@ -95,7 +95,7 @@ func( srv *Server ) Start() error {
     // Listener
     ln, err := net.Listen( "tcp", srv.addr )
     if err != nil {
-        return errors.ErrServerOperation.Raise( "starting server", "addr:", srv.addr, "err:", err )
+        return errors.ErrServerOperation.Append( "starting server", "addr:", srv.addr, "err:", err )
     }
 
     // Serve
@@ -105,7 +105,7 @@ func( srv *Server ) Start() error {
         err = srv.body.Serve( ln )
     }
 
-    return errors.ErrServerExited.Raise( "addr:", srv.addr, "err:", err )
+    return errors.ErrServerExited.Append( "addr:", srv.addr, "err:", err )
 
 }
 
@@ -114,7 +114,7 @@ func( srv *Server ) Stop() error {
     //
     err := srv.body.Shutdown( context.Background() )
     if err != nil {
-        return errors.ErrServerOperation.Raise( "err:", err )
+        return errors.ErrServerOperation.Append( "err:", err )
     }
     return nil
 
