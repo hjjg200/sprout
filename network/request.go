@@ -267,9 +267,11 @@ func( req *Request ) popJson( status int, obj interface{}, pretty bool ) {
     req.Pop( status, string( p ), "text/json;charset=utf-8" )
 
 }
+
 func( req *Request ) PopJson( status int, obj interface{} ) {
     req.popJson( status, obj, false )
 }
+
 func( req *Request ) PopPrettyJson( status int, obj interface{} ) {
     req.popJson( status, obj, true )
 }
@@ -278,6 +280,21 @@ func( req *Request ) PopAsset( ast *volume.Asset ) {
 
     if ast == nil {
         req.PopBlank( 404 )
+        return
+    }
+
+    // Check version
+    v, ok  := req.body.URL.Query()[c_queryAssetVersion]
+    astVer := ast.Version()
+
+    switch {
+    case !ok,
+        len( v ) != 1,
+        v[0] != astVer:
+        params := req.body.URL.Query()
+        params.Set( c_queryAssetVersion, astVer )
+        req.body.URL.RawQuery = params.Encode()
+        req.PopRedirect( 307, req.body.URL.String() )
         return
     }
 
@@ -294,9 +311,11 @@ func( req *Request ) PopAsset( ast *volume.Asset ) {
     return
 
 }
+
 func( req *Request ) PopFile( name string, modTime time.Time, rdskr io.ReadSeeker ) {
     http.ServeContent( req, req.body, name, modTime, rdskr )
 }
+
 func( req *Request ) PopAttachment( name string, modTime time.Time, rdskr io.ReadSeeker ) {
 
     req.Header().Set( "Content-Type", "application/octet-stream" )
@@ -304,4 +323,8 @@ func( req *Request ) PopAttachment( name string, modTime time.Time, rdskr io.Rea
     req.Header().Set( "Content-Disposition", "attachment; filename=\"" + name + "\"" )
     req.PopFile( name, modTime, rdskr )
 
+}
+
+func( req *Request ) PopRedirect( code int, url string ) {
+    http.Redirect( req.writer, req.body, url, code )
 }

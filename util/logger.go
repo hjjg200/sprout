@@ -4,8 +4,10 @@ import (
     "fmt"
     "io"
     "os"
+    "path/filepath"
     "strings"
     "time"
+    "runtime"
 )
 
 type Logger struct{
@@ -79,6 +81,19 @@ func( lgr *Logger ) Severeln( args ...interface{} ) {
 func( lgr *Logger ) Panicln( args ...interface{} ) {
     lgr.print( "\033[41;37;1m[PANIC!]\033[0m", args... )
     panic( "" )
+}
+
+func( lgr *Logger ) timeln( args ...interface{} ) {
+    lgr.println( "[ \033[36;1mTIME\033[0m ]", args... )
+}
+
+func( lgr *Logger ) Time( pc uintptr ) {
+    fn   := runtime.FuncForPC( pc )
+    f, l := fn.FileLine( pc )
+    dir  := filepath.Base( filepath.Dir( f ) )
+    f     = dir + "/" + filepath.Base( f )
+    n    := filepath.Base( fn.Name() )
+    lgr.timeln( fmt.Sprintf( "%s:%d - %s", f, l, n ) )
 }
 
 func( lgr *Logger ) AddColorWriter( w io.Writer ) {

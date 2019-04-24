@@ -11,7 +11,6 @@ import (
 func TestSprout01( t *testing.T ) {
 
     environ.Debug = true
-
     sprt := New()
 
     srv := network.NewServer()

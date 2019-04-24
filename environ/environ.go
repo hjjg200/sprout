@@ -1,6 +1,7 @@
 package environ
 
 import (
+    "runtime"
     "github.com/hjjg200/sprout/util"
 )
 
@@ -16,3 +17,12 @@ var (
     Debug = false
     Logger = util.NewLogger()
 )
+
+func LogTime() {
+    if Debug {
+        pc, _, _, ok := runtime.Caller( 1 )
+        if ok {
+            Logger.Time( pc )
+        }
+    }
+}

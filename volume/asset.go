@@ -68,3 +68,7 @@ func( ast *Asset ) MimeType() string {
 func( ast *Asset ) ModTime() time.Time {
     return ast.modTime
 }
+
+func( ast *Asset ) Version() string {
+    return ast.version
+}
