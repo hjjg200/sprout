@@ -288,13 +288,25 @@ func( req *Request ) PopAsset( ast *volume.Asset ) {
     astVer := ast.Version()
 
     switch {
-    case !ok,
+    case !ok,            // When version is different or omitted
         len( v ) != 1,
         v[0] != astVer:
+
         params := req.body.URL.Query()
         params.Set( c_queryAssetVersion, astVer )
         req.body.URL.RawQuery = params.Encode()
         req.PopRedirect( 307, req.body.URL.String() )
+
+        return
+    case ok && v[0] == astVer:
+        // Check the modified date
+        yes, ok := checkIfModifiedSince( req.body, ast.ModTime() )
+        // If there was no info about the modified time or
+        // if it was modified
+        if !ok || yes {
+            break
+        }
+        req.WriteHeader( 304 ) // Not modified
         return
     }
 
@@ -326,5 +338,5 @@ func( req *Request ) PopAttachment( name string, modTime time.Time, rdskr io.Rea
 }
 
 func( req *Request ) PopRedirect( code int, url string ) {
-    http.Redirect( req.writer, req.body, url, code )
+    http.Redirect( req, req.body, url, code )
 }

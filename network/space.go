@@ -162,6 +162,8 @@ func( spc *Space ) WithReverseProxy( target string ) {
         req.body.Header.Set( "X-Forwarded-Host", req.body.Header.Get( "Host" ) )
         req.body.Host = urlObj.Host
 
+        // Use req.writer in order to not call WriteHeader of req
+        // which prints to console
         proxy.ServeHTTP( req.writer, req.body )
         return true
 
