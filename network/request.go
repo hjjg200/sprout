@@ -300,10 +300,10 @@ func( req *Request ) PopAsset( ast *volume.Asset ) {
         return
     case ok && v[0] == astVer:
         // Check the modified date
-        yes, ok := checkIfModifiedSince( req.body, ast.ModTime() )
+        modified, ok2 := checkIfModifiedSince( req.body, ast.ModTime() )
         // If there was no info about the modified time or
         // if it was modified
-        if !ok || yes {
+        if !ok2 || modified {
             break
         }
         req.WriteHeader( 304 ) // Not modified
