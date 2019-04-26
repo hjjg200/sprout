@@ -6,9 +6,15 @@ import (
     "runtime"
 )
 
+type args struct {
+    caller string
+    body []interface{}
+}
+
 type Error struct {
     typ string
-    children []interface{}
+    children []Error
+    argStack []args
 }
 
 /*
@@ -78,7 +84,61 @@ func( Err Error ) Is( other interface{} ) bool {
     return Err.typ == Other.typ
 }
 
+func( Err *Error ) newArgs() *args {
+    args := args{}
+    if Err.argStack == nil {
+        Err.argStack = make( []args, 0 )
+    }
+    Err.argStack = append( Err.argStack, args )
+    return &args
+}
+
 func( Err Error ) append( args ...interface{} ) Error {
+
+    if Err.argStack == nil {
+        Err.argStack = make( []interface{}, 0 )
+    }
+    Err.argStack = append( Err.argStack, args{
+        caller: caller(),
+        body: make( []interface{}, 0 ),
+    } )
+
+    addTo := &Err.argStack[len( Err.argStack ) - 1].body
+
+    for _, arg := range args {
+        if cast, ok := arg.( Error ); ok {
+            Err.children = append( Err.children, cast )
+            if cast.argStack == nil {
+                cast.argStack = make( []interface{}, 0 )
+            }
+
+            addTo =
+        } else {
+            *addTo = append( *addTo, arg )
+        }
+    }
+
+    Err.children = append( Err.children, addTo )
+
+
+
+
+
+
+
+
+
+
+    if Err.argStack == nil {
+        Err.argStack = make( []args, 0 )
+    }
+
+    caller := caller()
+    Err.argStack = append( Err.argStack, args{
+        caller: caller,
+        body: args,
+    } )
+
 
     // Newline
     if Err.details != "" {
