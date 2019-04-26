@@ -118,6 +118,18 @@ func( req *Request ) Header() http.Header {
 }
 
 func( req *Request ) String() string {
+
+    if xfh := req.body.Header.Get( "X-Forwarded-Host" ); xfh != "" {
+        return fmt.Sprintf(
+            "%s %s %s <= %s <= %s",
+            req.body.Method,
+            req.body.Host + req.body.URL.Path,
+            req.body.Proto,
+            xfh,
+            req.body.RemoteAddr,
+        )
+    }
+
     return fmt.Sprintf(
         "%s %s %s <= %s",
         req.body.Method,
@@ -125,6 +137,7 @@ func( req *Request ) String() string {
         req.body.Proto,
         req.body.RemoteAddr,
     )
+
 }
 
 func( req *Request ) PopulateLocalizer( i1 *i18n.I18n ) {

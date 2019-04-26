@@ -7,16 +7,23 @@ import (
 
 func TestErrors01( t *testing.T ) {
 
-    ErrErrorForTest := newType( "ErrErrorForTest" )
-    fmt.Println( ErrErrorForTest )
+    ErrIO := newType( "ErrIO" )
+    ErrFunc := newType( "ErrFunc" )
+    ErrFormat := newType( "ErrFormat" )
+    ErrValue := newType( "ErrValue" )
 
-    ErrErrorForTest = ErrErrorForTest.Append( "error 01!", "something went wrong" )
-    fmt.Println( ErrErrorForTest )
+    err := Append( ErrValue, 22 ); fmt.Println( err )
+    fmt.Println( "---" )
+    err = Append( err, 30, 35 ); fmt.Println( err )
+    fmt.Println( "---" )
+    err = Append( ErrFormat, "given foramt blah", err ); fmt.Println( err )
+    fmt.Println( "---" )
+    err = Append( err, "YYYY-mm-dd" ); fmt.Println( err )
+    fmt.Println( "---" )
+    err = Append( ErrFunc, "error here", err ); fmt.Println( err )
+    fmt.Println( "---" )
+    err = Append( ErrIO, "failed operation", err ); fmt.Println( err )
 
-    ErrErrorForTest = ErrErrorForTest.Append( "error 02!", ErrErrorForTest )
-    fmt.Println( ErrErrorForTest )
 
-    ErrErrorForTest = ErrErrorForTest.Append( "error 03!", ErrErrorForTest )
-    fmt.Println( ErrErrorForTest )
 
 }

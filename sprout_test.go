@@ -22,7 +22,7 @@ func TestSprout01( t *testing.T ) {
     sprt.AddServer( srv2 )
     srv.AddSpace( space )
     space.AddAlias( "127.0.0.1" )
-    srv.SetPort( 8002 )
+    srv.SetAddr( "localhost:8002" )
     srv2.AddSpace( space2 )
     srv2.SetPort( 8003 )
 

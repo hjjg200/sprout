@@ -4,21 +4,35 @@ import (
     "fmt"
     "path/filepath"
     "runtime"
-
-    "github.com/hjjg200/sprout/environ"
 )
 
 type Error struct {
     typ string
-    details string
-    children []Error
+    children []interface{}
 }
 
-func New( base Error, args ...interface{} ) Error {
+/*
 
-    // Details
-    Err := Error{ typ: base.typ }
-    Err.Append( args... )
+[ WARN ]    24.553 - CompileFailure: at volume.Compile:16 - int(1) 12, error(2) someError
+    at volume.Do:124 - int(1), int(2)
+    at volume.Make:221 - float32(1)
+  ProcessingError: at d
+
+*/
+
+func Append( base interface{}, args ...interface{} ) Error {
+
+    var Err Error
+
+    if cast, ok := base.( Error ); ok {
+        Err = cast.append( args... )
+    } else if cast, ok := base.( error ); ok {
+        Err = Error{ typ: "ErrUnknown" }
+        args = append( []interface{}{ cast.Error() }, args... )
+        Err = Err.append( args... )
+    } else {
+        Err = Error{}
+    }
 
     // Return
     return Err
@@ -26,7 +40,7 @@ func New( base Error, args ...interface{} ) Error {
 }
 
 func caller() string {
-    _, file, no, ok := runtime.Caller( 2 )
+    _, file, no, ok := runtime.Caller( 3 )
     if !ok {
         return ""
     }
@@ -64,22 +78,19 @@ func( Err Error ) Is( other interface{} ) bool {
     return Err.typ == Other.typ
 }
 
-func( Err Error ) Raise() {
-    environ.Logger.Warnln( Err )
-}
-
-func( Err Error ) Append( args ...interface{} ) Error {
+func( Err Error ) append( args ...interface{} ) Error {
 
     // Newline
     if Err.details != "" {
-        Err.details += "\n  "
+        Err.details += "\n    "
     }
 
-    Err.details += caller()
+    Err.details += "at " + caller()
 
     // Details
     details := ""
     for i, arg := range args {
+        typ := fmt.Sprintf( "%T(%d)", arg, i )
         if child, ok := arg.( Error ); ok {
             if i > 0 {
                 details += "\n  "
@@ -89,10 +100,12 @@ func( Err Error ) Append( args ...interface{} ) Error {
                 Err.children = make( []Error, 0 )
             }
             Err.children = append( Err.children, child )
+            Err.children = append( Err.children, child.children... )
         } else {
             if i > 0 {
                 details += " "
             }
+            details += typ + ": "
             details += fmt.Sprint( arg )
         }
     }

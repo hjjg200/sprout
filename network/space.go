@@ -7,7 +7,6 @@ import (
     "strings"
     "regexp"
 
-    "github.com/hjjg200/sprout/environ"
     "github.com/hjjg200/sprout/util/errors"
     "github.com/hjjg200/sprout/volume"
 )
@@ -148,23 +147,17 @@ func( spc *Space ) WithReverseProxy( target string ) {
             req.PopError( 502, errors.ErrReverseProxy.Append( target ) )
         }
 
-        // Log
-        environ.Logger.OKln(
-            "ID",
-            req.ID(),
-            req.String(),
-            "Reverse Proxy",
-        )
-
         // Update headers to allow SSL connection
         req.body.URL.Host = urlObj.Host
         req.body.URL.Scheme = urlObj.Scheme
-        req.body.Header.Set( "X-Forwarded-Host", req.body.Header.Get( "Host" ) )
+        req.body.Header.Set( "X-Origin-Host", urlObj.Host )
+        req.body.Header.Set( "X-Forwarded-Host", req.body.Host )
+      // X-Forwarded-Proto
         req.body.Host = urlObj.Host
 
         // Use req.writer in order to not call WriteHeader of req
         // which prints to console
-        proxy.ServeHTTP( req.writer, req.body )
+        proxy.ServeHTTP( req, req.body )
         return true
 
     } )
