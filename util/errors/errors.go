@@ -13,8 +13,8 @@ type args struct {
 
 type Error struct {
     typ string
-    children []Error
-    argStack []args
+    parents []Error
+    stack []args
 }
 
 /*
@@ -45,8 +45,8 @@ func Append( base interface{}, args ...interface{} ) Error {
 
 }
 
-func caller() string {
-    _, file, no, ok := runtime.Caller( 3 )
+func caller( skip int ) string {
+    _, file, no, ok := runtime.Caller( skip )
     if !ok {
         return ""
     }
@@ -92,6 +92,54 @@ func( Err *Error ) newArgs() *args {
     Err.argStack = append( Err.argStack, args )
     return &args
 }
+
+
+
+func( Err Error ) Stack( args ...interface{} ) Error {
+
+    clr := caller( 2 )
+    if Err.stack == nil {
+        Err.stack = make( []args, 0 )
+    }
+    Err.stack = append( Err.stack, args{
+        caller: clr,
+        body: args,
+    } )
+    return Err
+
+}
+
+func( Err Error ) Prepend( other error ) Error {
+
+    if Other, ok := other.( Error ); ok {
+
+        if Other.parents == nil {
+            Other.parents = make( []Error, 0 )
+        }
+        Err.parents = append(
+            Other.parents,
+            Other,
+        )
+        return Err
+
+    } else {
+        Other = Error{
+            typ: "ErrUnknown",
+            parents: nil,
+            stack: []args{
+                args{
+                    caller: "undefined",
+                    body: []interface{ other },
+                },
+            },
+        }
+        Err.parents = []Error{ Other }
+    }
+
+}
+
+
+
 
 func( Err Error ) append( args ...interface{} ) Error {
 
