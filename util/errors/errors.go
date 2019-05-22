@@ -6,7 +6,7 @@ import (
     "runtime"
 )
 
-type args struct {
+type stack struct {
     caller string
     body []interface{}
 }
@@ -14,7 +14,7 @@ type args struct {
 type Error struct {
     typ string
     parents []Error
-    stack []args
+    stack stack
 }
 
 /*
@@ -59,6 +59,10 @@ func newType( typ string ) Error {
     return Error{ typ: typ }
 }
 
+func( Err Error ) error() string {
+
+}
+
 func( Err Error ) Error() string {
     return fmt.Sprint( Err.typ + ": " + Err.details )
 }
@@ -101,15 +105,15 @@ func( Err Error ) Stack( args ...interface{} ) Error {
     if Err.stack == nil {
         Err.stack = make( []args, 0 )
     }
-    Err.stack = append( Err.stack, args{
+    Err.stack = stack{
         caller: clr,
         body: args,
-    } )
+    }
     return Err
 
 }
 
-func( Err Error ) Prepend( other error ) Error {
+func( Err Error ) After( other error ) Error {
 
     if Other, ok := other.( Error ); ok {
 
