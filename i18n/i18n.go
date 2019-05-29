@@ -2,17 +2,16 @@ package i18n
 
 import (
     "bytes"
-    "path/filepath"
+    "fmt"
     "io"
     "io/ioutil"
     "net/http"
     "net/url"
     "os"
+    "path/filepath"
     "sort"
     "strconv"
     "strings"
-
-    "github.com/hjjg200/sprout/util/errors"
 )
 
 type I18n struct {
@@ -222,7 +221,7 @@ func( i1 *I18n ) RemoveLocale( lcName string ) error {
 
     // Check
     if !i1.HasLocale( lcName ) {
-        return errors.ErrNotFound.Append( "locale not found", lcName )
+        return fmt.Errorf( "Locale %s was not found", lcName )
     }
 
     // Buffer
@@ -279,13 +278,13 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
     // Check
     if len( lcName ) == 0 {
-        return errors.ErrInvalidParameter.Append( lcName )
+        return fmt.Errorf( "Given parameter, %s, is invalid", lcName )
     }
 
     // Check
     _, ok := i1.locales[lcName]
     if !ok {
-        return errors.ErrInvalidParameter.Append( lcName )
+        return fmt.Errorf( "Given parameter, %s, is invalid", lcName )
     }
 
     // Assign
@@ -295,7 +294,7 @@ func( i1 *I18n ) SetDefaultLocale( lcName string ) error {
 
 func( i1 *I18n ) SetQueryParameter( param string ) error {
     if len( param ) == 0 {
-        return errors.ErrInvalidParameter.Append( param )
+        return fmt.Errorf( "Given parameter, %s, is invalid", param )
     }
     i1.queryParameter = param
     return nil
@@ -303,7 +302,7 @@ func( i1 *I18n ) SetQueryParameter( param string ) error {
 
 func( i1 *I18n ) SetCookie( cookie string ) error {
     if len( cookie ) == 0 {
-        return errors.ErrInvalidParameter.Append( cookie )
+        return fmt.Errorf( "Given parameter, %s, is invalid", cookie )
     }
     i1.cookie = cookie
     return nil
@@ -311,7 +310,7 @@ func( i1 *I18n ) SetCookie( cookie string ) error {
 
 func( i1 *I18n ) SetDelimiters( left, right string ) error {
     if len( left ) == 0 || len( right ) == 0 {
-        return errors.ErrInvalidParameter.Append( left, right )
+        return fmt.Errorf( "Given parameters -- %s and %s -- are invalid", left, right )
     }
     i1.leftDelimiter = left
     i1.rightDelimiter = right
@@ -349,7 +348,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
             qFactor, err := strconv.ParseFloat( split[i][semicolon + 3:], 64 )
             if err != nil {
                 //panic( err )
-                return "", errors.ErrMalformedAcceptLang.Append( acptLng, err ) // Malformed accept-language
+                return "", fmt.Errorf( "Given accept langauge is invalid: %s; %s", acptLng, err.Error() ) // Malformed accept-language
             }
             entries = append( entries, acceptLanguageEntry{
                 locale: lcName,
@@ -383,7 +382,7 @@ func( i1 *I18n ) ParseAcceptLanguage( acptLng string ) ( string, error ) {
     }
 
     // If not found
-    return "", errors.ErrNotFound.Append( "locale not found for", acptLng )
+    return "", fmt.Errorf( "Locale for the accept langauge, %s, was not found", acptLng )
 
 }
 
@@ -394,12 +393,12 @@ func( i1 *I18n ) ParseCookies( cks []*http.Cookie ) ( string, error ) {
         if cks[i].Name == i1.cookie {
             lcName, err := i1.ParseSingleLocale( cks[i].Value )
             if err != nil {
-                return "", errors.ErrNotFound.Append( "locale not found", cks[i].Value )
+                break
             }
             return lcName, nil
         }
     }
-    return "", errors.ErrNotFound.Append( "locale not found" )
+    return "", fmt.Errorf( "Locale for the cookie value, %s, was not found", cks[i].Value )
 
 }
 
@@ -407,7 +406,7 @@ func( i1 *I18n ) ParseUrlPath( u *url.URL ) ( string, error ) {
 
     // If too short
     if len( u.Path ) == 1 {
-        return "", errors.ErrNotFound.Append( "locale not found" )
+        return "", fmt.Errorf( "Locale for the url path, %s, was not found", u.Path )
     }
 
     // Parse
@@ -422,9 +421,9 @@ func( i1 *I18n ) ParseUrlQuery( u *url.URL ) ( string, error ) {
     vals   := u.Query()
     lcName := vals.Get( i1.queryParameter )
 
-    //
+    // Check
     if lcName == "" {
-        return "", errors.ErrNotFound.Append( "query parameter not found" )
+        return "", fmt.Errorf( "Query parameter was not found" )
     } else {
         lcName, err := i1.ParseSingleLocale( lcName )
         if err != nil {
@@ -454,6 +453,6 @@ func( i1 *I18n ) ParseSingleLocale( lcName string ) ( string, error ) {
     }
 
     // Return default
-    return "", errors.ErrNotFound.Append( "locale not found" )
+    return "", fmt.Errorf( "Locale for %s was not found", lcName )
 
 }

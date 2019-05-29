@@ -13,7 +13,6 @@ import (
     "github.com/hjjg200/sprout/environ"
     "github.com/hjjg200/sprout/i18n"
     "github.com/hjjg200/sprout/util"
-    "github.com/hjjg200/sprout/util/errors"
     "github.com/hjjg200/sprout/volume"
 )
 
@@ -84,7 +83,7 @@ func( req *Request ) Write( p []byte ) ( int, error ) {
 func( req *Request ) SetStatus( status int ) {
 
     if req.wroteHeader {
-        environ.Logger.Panicln( errors.ErrDifferentStatusCode.Append( "ID", req.ID() ) )
+        environ.Logger.Panicln( fmt.Errorf( "Request ID: %d -- multiple attempts to write status code were detected", req.ID() ) )
     }
 
     req.wroteHeader = true
@@ -274,7 +273,7 @@ func( req *Request ) popJson( status int, obj interface{}, pretty bool ) {
 
     // Error
     if err != nil {
-        req.PopError( 500, errors.ErrMalformedJson.Append( err ) )
+        req.PopError( 500, fmt.Errorf( "Given json is malformed; %s", err )
     }
 
     req.Pop( status, string( p ), "text/json;charset=utf-8" )

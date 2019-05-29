@@ -3,10 +3,10 @@ package cache
 import (
     "archive/zip"
     "bytes"
+    "fmt"
     "io"
     "time"
 
-    "github.com/hjjg200/sprout/util/errors"
     "github.com/hjjg200/together"
 )
 
@@ -86,7 +86,7 @@ func( e *entry ) Open() ( io.ReadCloser, error ) {
     // Open
     rc, err := e.file.Open()
     if err != nil {
-        return nil, errors.ErrIOError.Append( "failed to access", e.Name )
+        return nil, fmt.Errorf( "Failed to access %s", e.Name )
     }
     return &entryReadCloser{
         rc: rc,
@@ -146,7 +146,7 @@ func( chc *Cache ) Create( path string, mt time.Time ) ( io.WriteCloser, error )
         Modified: mt,
     } )
     if err != nil {
-        return nil, errors.ErrIOError.Append( "failed to write", path )
+        return nil, fmt.Errorf( "Failed to write the path %s", path )
     }
     return &entryWriter{
         wr: wr,
