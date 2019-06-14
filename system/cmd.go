@@ -2,12 +2,11 @@ package system
 
 import (
     "bytes"
+    "fmt"
     "io"
     "os/exec"
     "strings"
     "runtime"
-
-    "github.com/hjjg200/sprout/util/errors"
 )
 
 func NewCmd( args ...string ) *exec.Cmd {
@@ -40,7 +39,7 @@ func Exec( stdin io.Reader, stdout, stderr io.Writer, args ...string ) error {
 
     // Check err
     if err != nil {
-        return errors.ErrCmdExecFailure.Append( err, errbuf.String() )
+        return fmt.Errorf( "Failed to execute the command; %s; %s", err, errbuf.String() )
     }
 
     return nil
@@ -68,7 +67,7 @@ func DoesCommandExist( cmd string ) ( bool, error ) {
     err = e.Run()
 
     if err != nil {
-        return false, errors.ErrCmdExecFailure.Append( err )
+        return false, fmt.Errorf( "Failed to execute the command; %s", err )
     }
 
     r := out.String()

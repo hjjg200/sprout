@@ -1,13 +1,13 @@
 package network
 
 import (
+    "fmt"
     "net/http"
     "net/http/httputil"
     "net/url"
     "strings"
     "regexp"
 
-    "github.com/hjjg200/sprout/util/errors"
     "github.com/hjjg200/sprout/volume"
 )
 
@@ -144,7 +144,7 @@ func( spc *Space ) WithReverseProxy( target string ) {
     spc.WithHandler( func( req *Request ) bool {
 
         if err != nil {
-            req.PopError( 502, errors.ErrReverseProxy.Append( target ) )
+            req.PopError( 502, "Reverse prxoy error. The target is %s", target )
         }
 
         // Update headers to allow SSL connection
